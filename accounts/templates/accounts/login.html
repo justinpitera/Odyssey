@@ -1,0 +1,49 @@
+
+{% load static %}
+{% load form_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{% static 'accounts/css/styles.css' %}">
+    <script src="//unpkg.com/alpinejs" defer></script>
+</head>
+<body oncontextmenu="return false;">
+    
+
+    <video autoplay muted loop id="bg-video" disablePictureInPicture oncontextmenu="return false;">
+        <source src="{% static 'videos/background.webm' %}" type="video/webm">
+    </video>
+    
+    <script>
+    document.getElementById('bg-video').controls = false; // Hides default controls
+    // Implement custom controls as needed
+    </script>
+    
+
+
+<div class="logo">
+    <img src="{% static 'images/logo.webp' %}" alt="Logo" class="logo" oncontextmenu="return false;" draggable="false">
+</div>
+
+<div class="bg-white bg-opacity-75 rounded-lg p-6 shadow-lg max-w-4xl mx-auto" oncontextmenu="return false;">
+    <form method="post" action="{% url 'login' %}" style="user-select: none;">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+                {{ field|add_class:"shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" }}
+            </div>
+        {% endfor %}
+        <button type="submit" class="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Login</button>
+        <a href="{% url 'register' %}" class="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800" style="margin-left: 10px;">Don't have an account? Register</a>
+    </form>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+{% if active_flight %}
+<p>Active flight: {{ active_flight.departure }}</p>
+{% endif %}
+{% endblock %}

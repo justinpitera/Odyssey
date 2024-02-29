@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300&display=swap');
+
+:root {
+  --dark-bg: #121212; /* Dark background */
+  --dark-border: #333333; /* Dark border color */
+  --dark-header-bg: #1E1E1E; /* Slightly lighter background for headers */
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    list-style: none;
+    font-family: "Montserrat", sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 300;
+    font-style: normal;
+  }
+  
+    body, html {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+    
+    #bg-video {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        min-width: 100%; 
+        min-height: 100%;
+        z-index: -1;
+        background-size: cover;
+    }
+    
+    .logo {
+        margin-bottom: 20px;
+    }
+    
+    .form-container {
+        background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white */
+        padding: 40px;
+        border-radius: 10px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+    }
+    
+    form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    form > p {
+        margin: 10px 0;
+    }
+    
+    button {
+        background-color: #4CAF50; /* Green */
+        color: white;
+        padding: 10px 20px;
+        margin: 10px 0;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    button:hover {
+        opacity: 0.8;
+    }
+    .logo {
+        width: 400px; /* You can adjust this to your preferred logo size */
+        height: auto; /* Keeps the aspect ratio intact */
+      }

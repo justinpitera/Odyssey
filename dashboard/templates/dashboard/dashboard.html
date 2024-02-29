@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{%load static %}
+{% block content %}
+<div class="py-8 px-4">
+    <div class="grid md:grid-cols-3 gap-6">
+        <!-- Card 1 -->
+        {% if user.is_authenticated %}
+            <div class="max-w-sm rounded overflow-hidden shadow-lg bg-white dark:bg-gray-700">
+                <center><img src="{% static 'images/rank.png' %}" alt="Sunset in the mountains"></center>
+                <div class="px-6 py-4">
+                    <div class="font-bold text-xl mb-2 dark:text-white">{{user.rank}} {{user.first_name}} {{user.last_name}}</div>
+                    <p class="text-gray-700 dark:text-gray-300 text-base">
+                        You first became a pilot on {{user.date_joined|date:"F d, Y"}}. 
+                        {% if user.hours == 1 %}
+                            Since then, you have racked up {{user.hours}} flight hour.
+                        {% elif user.hours >= 1 %}
+                            Since then, you have racked up {{user.hours}} flight hours.
+                        {% else %}
+                            You have not flown any hours yet. To get started, click go to the shop and purchase an aircraft license. Afterwards, navigate to the schedule page to generate a schedule.
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="px-6 pt-4 pb-2">
+                    <span class="inline-block bg-gray-200 dark:bg-gray-800 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-400 mr-2 mb-2">{{user.hours}} Flight Hours</span>
+                    <span class="inline-block bg-gray-200 dark:bg-gray-800 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-400 mr-2 mb-2">{{user.region}}</span>
+                    {% if user.is_staff %}
+                        <span class="inline-block bg-gray-200 dark:bg-800 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-black-400 mb-2">STAFF</span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}

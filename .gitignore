@@ -1,0 +1,25 @@
+# Django project files
+*.pyc
+*.pyo
+__pycache__/
+*.sqlite3
+
+# Static files
+staticfiles/
+media/
+
+# Environment variables
+.env
+
+# IDE files
+.vscode/
+.idea/
+
+# Dependency directories
+venv/
+node_modules/
+
+# Database
+db.sqlite3
+
+static/videos/

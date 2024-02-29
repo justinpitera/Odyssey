@@ -1,0 +1,13 @@
+<!-- create_flight.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Create New Flight</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+</div>
+{% endblock %}

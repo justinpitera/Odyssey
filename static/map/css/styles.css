@@ -1,0 +1,131 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevents scrollbars */
+}
+#map {
+    height:100%;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+}
+
+
+
+/* Style for transparent cluster icons */
+.transparent-cluster-icon {
+    background-color: rgba(0, 0, 0, 0); 
+    border: none; 
+}
+
+/* Style for custom icons */
+.custom-icon div {
+    text-align: center;
+}
+
+.custom-icon i {
+    pointer-events: none;
+}
+#map-toolbar {
+    padding: 5px;
+    background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white */
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    display: flex;
+    gap: 10px; /* Adds space between buttons */
+}
+
+.toolbar-btn {
+    width: 40px; /* Set a fixed width */
+    height: 40px; /* Set a fixed height */
+    background-color: #fff;
+    border: none;
+    padding: 0; /* Remove padding to allow the width and height to control the size */
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px; /* Adjust this to ensure icons fit well inside the fixed dimensions */
+    display: flex;
+    justify-content: center; /* Center the icon horizontally */
+    align-items: center; /* Center the icon vertically */
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Optional: Adds shadow for better visibility */
+}
+.toolbar-btn-active {
+    background-color: #007bff; /* Example: Change to a blue background for active state */
+    color: #ffffff; /* Change text/icon color to white for better contrast */
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Optional: Make the shadow more pronounced */
+}
+
+.toolbar-btn i {
+    margin-right: 5px;
+}
+
+.toolbar-btn:hover {
+    background-color: #f0f0f0; /* Slightly darker on hover for visual feedback */
+}
+
+#toggle-rotation {
+    background-color: #fff; /* White background */
+    border: none; /* Removes border */
+    padding: 10px 15px; /* Adds some padding */
+    border-radius: 5px; /* Rounded corners */
+    cursor: pointer; /* Cursor changes to pointer on hover */
+    font-size: 16px; /* Adjust font size as needed */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); /* Adds subtle shadow for better visibility */
+    color: #333; /* Font color */
+    display: flex; /* Ensures icon and text are aligned properly */
+    align-items: center; /* Centers items vertically */
+}
+
+#toggle-rotation i {
+    margin-right: 5px; /* Adds some space between the icon and text */
+}
+
+.toolbar-search-box {
+    flex-grow: 0;
+    width: 0;
+    opacity: 0;
+    transition: width 0.5s, opacity 0.5s; /* Smooth transition for width and opacity */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-left: 10px; /* Space from the search icon */
+    padding: 10px;
+    display: none; /* Initially hidden */
+}
+
+.toolbar-search-box.active {
+    flex-grow: 1; /* Allow it to expand */
+    width: 180px; /* Desired width when active */
+    opacity: 1; /* Make it fully opaque */
+    display: block; /* Show the input */
+}
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes popOut {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.5);
+    }
+}
+
+.modal-enter {
+    animation: popIn 0.5s forwards;
+}
+
+.modal-exit {
+    animation: popOut 0.5s forwards;
+}

@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Flight Hours</title>
+</head>
+<body>
+    <h1>Update Flight Hours</h1>
+    <form method="post" action="{% url 'update_hours' %}">
+        {% csrf_token %}
+        <label for="hours">New Flight Hours:</label>
+        <input type="number" id="hours" name="hours" required>
+        <button type="submit">Update Hours</button>
+    </form>
+</body>
+</html>
