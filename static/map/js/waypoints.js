@@ -77,7 +77,9 @@ function drawRoute(routePoints, todPosition) {
     // Initialize an array to hold segments of the route, with each segment being a GeoJSON LineString
     let segments = [];
     let currentSegment = [routePoints[0].geometry.coordinates]; // Start with the first point
-
+    
+    console.log(routePoints.filter(wp => wp.properties.ident === 'BONLO'));
+    console.log(routePoints.filter(wp => wp.properties.ident === 'BIDNA'));
     for (let i = 1; i < routePoints.length; i++) {
         const prevPoint = routePoints[i - 1].geometry.coordinates;
         const currPoint = routePoints[i].geometry.coordinates;
