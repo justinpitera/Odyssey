@@ -9,6 +9,7 @@ class User(AbstractUser):
     region = models.CharField(max_length=100, null=True)
     rank = models.CharField(max_length=100, default='Cadet')
     hours = models.IntegerField(default=0)
+    simbrief_id = models.CharField(max_length=100, null=True)
 
 @receiver(pre_save, sender=User)
 def update_user_rank(sender, instance, **kwargs):

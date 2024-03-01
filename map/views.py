@@ -4,7 +4,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from map.models import Airport
 from schedule.models import Flight
-from geopy.geocoders import Nominatim
 from django.conf import settings
 from itertools import islice
 from django.contrib.auth.decorators import login_required

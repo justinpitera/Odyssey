@@ -27,6 +27,7 @@
             <div id="search-results" style="display: none; position: absolute; top: 105px; left: 50%; transform: translateX(-50%); background-color: white; border: 1px solid #aaa; border-radius: 5px; width: 400px; max-height: 300px; overflow-y: auto; z-index: 1001;"></div>
         </div>
         <script>
+        
 
             const placeholders = [
             "Search for airports...",
@@ -77,53 +78,66 @@
                 zoom: 1, // Starting zoom
                 projection: 'globe' // Enable the globe projection
             });
-            
+
             map.on('load', () => {
-                // Initial setting of terrain, sky, and fog
-                setTerrainSkyAndFog(map.getStyle().id);
-            });
-            
-            function setTerrainSkyAndFog(style) {
+                // Initial setting of terrain
                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-            
-                const isDarkStyle = style.includes('dark');
-                map.addLayer({
-                    'id': 'sky',
-                    'type': 'sky',
-                    'paint': {
-                        // Adjust these values based on the style
-                        'sky-type': 'atmosphere',
-                        'sky-atmosphere-sun': [0.0, 0.0],
-                        'sky-atmosphere-sun-intensity': isDarkStyle ? 15 : 5,
-                        'sky-atmosphere-color': isDarkStyle ? '#000511' : '#88ccee',
-                        'sky-opacity': [
-                            'interpolate',
-                            ['linear'],
-                            ['zoom'],
-                            0,
-                            1,
-                            22,
-                            1
-                        ]
-                    }
-                });
-            
+
+                // Add fog to create a misty effect, especially at higher altitudes or distances
                 map.setFog({
-                    // Adjust these values based on the style
-                    'color': isDarkStyle ? '#000' : '#eaeaea',
-                    'range': [1.0, 20],
-                    'horizon-blend': isDarkStyle ? 0.1 : 0.2,
+                    'range': [-1, 1.5],
+                    'color': '#4e4e52', // Adjust the color to fit the dark theme
+                    'horizon-blend': 0.04,
                 });
-            }
-            
+
+                // Set light to simulate a moonlight or low-light condition for a darker sky effect
+                map.setLight({
+                    'anchor': 'viewport',
+                    'color': '#8899AA',
+                    'intensity': 0.3
+                });
+
+                // Add or adjust the atmosphere to create a more immersive globe projection experience
+                if (!map.getAtmosphere()) { // Check if the atmosphere is not already set
+                    map.setAtmosphere({
+                        'skyType': 'atmosphere',
+                        'skyAtmosphereColor': '#000000',
+                        'skyAtmosphereSun': [0.0, 0.0],
+                        'skyAtmosphereSunIntensity': 15
+                    });
+                }
+            });
+
             document.getElementById('styleSelector').addEventListener('change', function() {
                 var selectedStyle = this.value;
                 map.setStyle(selectedStyle);
-            
+
                 // Because setStyle will remove and re-add all layers/sources, wait for the style to load before re-adding them
                 map.once('style.load', () => {
-                    setTerrainSkyAndFog(selectedStyle);
-                    drawWaypointsAndRoute(); // Ensure this function can handle being called multiple times
+                    // Ensure this function can handle being called multiple times
+                    drawWaypointsAndRoute();
+
+                    // Reapply fog, light, and atmosphere settings since setStyle removes them
+                    map.setFog({
+                        'range': [-1, 1.5],
+                        'color': '#4e4e52',
+                        'horizon-blend': 0.04,
+                    });
+
+                    map.setLight({
+                        'anchor': 'viewport',
+                        'color': '#8899AA',
+                        'intensity': 0.3
+                    });
+
+                    if (!map.getAtmosphere()) {
+                        map.setAtmosphere({
+                            'skyType': 'atmosphere',
+                            'skyAtmosphereColor': '#000000',
+                            'skyAtmosphereSun': [0.0, 0.0],
+                            'skyAtmosphereSunIntensity': 15
+                        });
+                    }
                 });
             });
         </script>
@@ -132,5 +146,19 @@
         <script src="{% static 'map/js/waypoints.js' %}"></script>
         <script src="{% static 'map/js/search.js' %}"></script>
         <script src="{% static 'map/js/window.js' %}"></script>
+        <script>
+        /**
+        * Main function to draw waypoints and route.
+        */
+        function drawWaypointsAndRoute() {
+            const simBriefApiUrl = 'https://www.simbrief.com/api/xml.fetcher.php?userid={{user.simbrief_id}}&json=1'; // Replace with your actual API URL
+
+            fetchFlightPlanData(simBriefApiUrl)
+                .then(processAndDrawRoute)
+                .catch(error => console.error('Failed to draw waypoints and route:', error));
+        }
+
+        drawWaypointsAndRoute();
+        </script>
     </body>
 </html>

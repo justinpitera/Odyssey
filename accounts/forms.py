@@ -17,4 +17,4 @@ class UserCreationForm(UserCreationForm):
 
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = UserCreationForm.Meta.fields + ('first_name', 'last_name', 'email', 'region', 'rank')
+        fields = UserCreationForm.Meta.fields + ('first_name', 'last_name', 'email', 'region', 'rank', 'simbrief_id')

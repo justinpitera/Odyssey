@@ -132,17 +132,3 @@ function drawWaypointsMarkers(waypoints) {
             .addTo(map);
     });
 }
-
-
-/**
- * Main function to draw waypoints and route.
- */
-function drawWaypointsAndRoute() {
-    const simBriefApiUrl = 'https://www.simbrief.com/api/xml.fetcher.php?userid=833267&json=1'; // Replace with your actual API URL
-
-    fetchFlightPlanData(simBriefApiUrl)
-        .then(processAndDrawRoute)
-        .catch(error => console.error('Failed to draw waypoints and route:', error));
-}
-
-drawWaypointsAndRoute();
