@@ -2,7 +2,6 @@
 *.pyc
 *.pyo
 __pycache__/
-*.sqlite3
 
 
 # Environment variables
@@ -15,8 +14,5 @@ __pycache__/
 # Dependency directories
 venv/
 node_modules/
-
-# Database
-db.sqlite3
 
 static/videos/

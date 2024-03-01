@@ -1,7 +1,8 @@
 import csv
 import os
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from map.models import Airport
 from schedule.models import Flight
 from geopy.geocoders import Nominatim
 from django.conf import settings
@@ -67,95 +68,73 @@ def waypoints_view(request):
 
 
 
-import csv
-from django.http import JsonResponse
-
-
-import csv
-from django.http import JsonResponse
-
-from django.http import JsonResponse
-import csv
-from django.conf import settings
-from django.db.models import Q
-import os
-
-from django.http import JsonResponse
-import os
-import csv
-from django.conf import settings
 
 def airports_view(request):
-    # Extract viewport bounds from request parameters
-    north_bound = float(request.GET.get('northBound', '90'))  # Default to max lat if not provided
-    south_bound = float(request.GET.get('southBound', '-90'))  # Default to min lat if not provided
-    east_bound = float(request.GET.get('eastBound', '180'))  # Default to max long if not provided
-    west_bound = float(request.GET.get('westBound', '-180'))  # Default to min long if not provided
-    zoom_level = float(request.GET.get('zoom', 10))  # Default zoom level if not provided
+    # Extract viewport bounds and zoom level from request parameters
+    north_bound = float(request.GET.get('northBound', '90'))
+    south_bound = float(request.GET.get('southBound', '-90'))
+    east_bound = float(request.GET.get('eastBound', '180'))
+    west_bound = float(request.GET.get('westBound', '-180'))
+    zoom_level = float(request.GET.get('zoom', 10))
 
+    # Initialize lists to hold the filtered airports and search results
     airports = []
     searchList = []
 
-    try:
-        with open(os.path.join(settings.STATIC_ROOT, 'data', 'airports.csv'), newline='', encoding='utf-8') as csvfile:
-            reader = csv.reader(csvfile)
-            next(reader, None)  # Skip the header row
+    # Query the database for all airports that are within the viewport bounds
+    queryset = Airport.objects.filter(
+        latitude_deg__lte=north_bound,
+        latitude_deg__gte=south_bound,
+        longitude_deg__lte=east_bound,
+        longitude_deg__gte=west_bound,
+    )
 
-            for row in reader:
-                lat = float(row[4])
-                lng = float(row[5])
-                airport_type = row[2]
-                name = row[3]
-                coordinates = f"{lng}, {lat}"
-                municipality = row[10]
+    for airport in queryset:
+        include_airport = False
+        coordinates = f"{airport.longitude_deg}, {airport.latitude_deg}"
 
-                # Add to searchList
-                searchList.append({
-                    'name': name,
-                    'type': airport_type,
-                    'coordinates': coordinates,
-                    'municipality': municipality,
-                })
+        # Adjust airport inclusion based on zoom level and airport type
+        if zoom_level > 10:
+            include_airport = True
+        elif zoom_level > 8.1 and airport.type in ['large_airport', 'medium_airport', 'heliport']:
+            include_airport = True
+        elif zoom_level > 4.5 and (airport.type == 'large_airport' or (airport.type == 'medium_airport' and 'international' in airport.name.lower())):
+            include_airport = True
 
-                # Filter for viewport
-                if south_bound <= lat <= north_bound and west_bound <= lng <= east_bound:
-                    include_airport = False
+        if include_airport:
+            airports.append({
+                'name': airport.name,
+                'type': airport.type,
+                'coordinates': coordinates,
+                'municipality': airport.iso_region,  # Assuming iso_region is used in place of municipality
+            })
 
-                    # Adjust airport inclusion based on zoom level
-                    if zoom_level > 10:  
-                        include_airport = True
-                    elif zoom_level > 8.1 and airport_type in ['large_airport', 'medium_airport', 'heliport']:
-                        include_airport = True
-                    elif zoom_level > 4.5 and (airport_type == 'large_airport' or (airport_type == 'medium_airport' and 'international' in row[3].lower())):
-                        include_airport = True
-                    
-                    if include_airport:
-                        airports.append({
-                            'name': name,
-                            'type': airport_type,
-                            'coordinates': coordinates,
-                            'municipality': municipality,
-                        })
+        # Assuming you want to add all queried airports to searchList regardless of the zoom level
+        searchList.append({
+            'name': airport.name,
+            'type': airport.type,
+            'coordinates': coordinates,
+            'municipality': airport.iso_region,
+        })
 
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-    
+    # Handle the search query
     query = request.GET.get('query', '').lower()
     results = []
 
-    with open(os.path.join(settings.STATIC_ROOT, 'data', 'airports.csv'), newline='', encoding='utf-8') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader, None)  # Skip the header row
-        for row in reader:
-            if query in row[3].lower():  # Assuming row[3] contains the airport name
-                results.append({
-                    'name': row[3],
-                    'type': row[2],
-                    'coordinates': f"{row[5]}, {row[4]}",
-                    'municipality': row[10],
-                })
+    if query:
+        # Filter the already filtered queryset for names containing the query
+        search_results = queryset.filter(name__icontains=query)
+        for airport in search_results:
+            results.append({
+                'name': airport.name,
+                'type': airport.type,
+                'coordinates': f"{airport.longitude_deg}, {airport.latitude_deg}",
+                'municipality': airport.iso_region,
+            })
 
-    return JsonResponse({'airports': airports, 'searchList': searchList}, safe=False)
+    # Return both the filtered list of airports and the search results
+    return JsonResponse({'airports': airports, 'searchList': searchList, 'results': results}, safe=False)
+
 
 
 
@@ -179,6 +158,37 @@ def search_airports(request):
                 })
 
     return JsonResponse(results, safe=False)
+
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def import_airports_from_csv(request):
+    csv_file_path = 'staticfiles/data/airports.csv'  # Ensure this path is correct and accessible
+    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            if row['type'].lower() == 'closed':
+                continue
+            
+            airport, created = Airport.objects.get_or_create(
+                ident=row['ident'],
+                defaults={
+                    'type': row['type'],
+                    'name': row['name'],
+                    'latitude_deg': float(row['latitude_deg']),
+                    'longitude_deg': float(row['longitude_deg']),
+                    'elevation_ft': int(row['elevation_ft']) if row['elevation_ft'] else None,
+                    'continent': row['continent'],
+                    'iso_country': row['iso_country'],
+                    'iso_region': row['iso_region'],
+                }
+            )
+            
+            if created:
+                print(f"Successfully added: {airport.name} ({airport.ident})")
+            else:
+                print(f"Airport already exists: {airport.name} ({airport.ident})")
+    return HttpResponse('Airport data imported successfully.')
 
 
 
