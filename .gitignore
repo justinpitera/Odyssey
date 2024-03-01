@@ -4,9 +4,6 @@
 __pycache__/
 *.sqlite3
 
-# Static files
-staticfiles/
-media/
 
 # Environment variables
 .env
