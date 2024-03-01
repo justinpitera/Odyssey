@@ -35,8 +35,17 @@ function updateOrAddMarker(newAircraftPosition) {
 function getAircraftIconHtml(heading, isPlayerAircraft = false) {
   const color = isPlayerAircraft ? 'orange' : 'gray';
   const size = isPlayerAircraft ? 25 : 20;
-  return `<i class="fa-solid fa-location-arrow-up" style="transform: rotate(${heading}deg); color: ${color}; font-size:${size}px; text-shadow: 4px 4px 8px rgba(0,0,0,0.5); -webkit-text-stroke: 2px black; text-stroke: 2px black;"></i>`;
+  return `<i class="fa-solid fa-location-arrow-up" style="transform: rotate(${getTrueHeading(heading)}deg); color: ${color}; font-size:${size}px; text-shadow: 4px 4px 8px rgba(0,0,0,0.5); -webkit-text-stroke: 2px black; text-stroke: 2px black;"></i>`;
 
+}
+
+function getTrueHeading(heading) {
+  // Get the current bearing of the map
+  const mapBearing = map.getBearing();
+  // The desired rotation of the marker is the negative of the map's bearing plus the aircraft's heading.
+  // This ensures the marker remains oriented to the earth, not the map's rotation.
+  const rotation = heading - mapBearing;
+  return rotation;
 }
 
 function updateExistingMarker(markerObj, position) {
@@ -96,6 +105,11 @@ let isMapRotated = false; // Tracks the state of map rotation
 document.getElementById('toggle-rotation').addEventListener('click', toggleMapRotation);
 
 
+
+let previousMapSettings = { zoom: 5, pitch: 0, bearing: 0 }; // Store initial/default map settings
+
+document.getElementById('toggle-rotation').addEventListener('click', toggleMapRotation);
+
 function toggleMapRotation() {
   const playerAircraftKey = Object.keys(aircraftMarkers).find(key => aircraftMarkers[key].isPlayer);
   const playerAircraftMarker = aircraftMarkers[playerAircraftKey];
@@ -105,16 +119,21 @@ function toggleMapRotation() {
     const currentHeading = playerAircraftMarker.heading;
 
     if (isMapRotated) {
-      // Reset map rotation, zoom, and pitch to default values
+      // Restore map to previous settings
       map.flyTo({
         center: position,
-        zoom: 10, // Set to your default zoom level
-        pitch: 0, // Reset pitch to 0 for a straight down view
-        bearing: 0, // Reset bearing to north
+        zoom: previousMapSettings.zoom, // Restore the previous zoom level
+        pitch: previousMapSettings.pitch, // Restore the previous pitch
+        bearing: previousMapSettings.bearing, // Restore the previous bearing to north
         duration: 1000
       });
       isMapRotated = false;
     } else {
+      // Save current map settings before changing
+      previousMapSettings.zoom = map.getZoom();
+      previousMapSettings.pitch = map.getPitch();
+      previousMapSettings.bearing = map.getBearing();
+
       // Rotate map to match aircraft's heading, zoom in, and adjust pitch for better view
       map.flyTo({
         center: position,
@@ -129,6 +148,7 @@ function toggleMapRotation() {
 }
 
 
+
 function continuouslyFollowAircraft() {
   if (isMapRotated) {
     const playerAircraftKey = Object.keys(aircraftMarkers).find(key => aircraftMarkers[key].isPlayer);
@@ -141,7 +161,6 @@ function continuouslyFollowAircraft() {
         center: position,
         zoom: 10, // Adjust as needed for the best view
         pitch: 45, // Adjust as needed
-   
         bearing: currentHeading,
         essential: true, // This ensures the map moves even if the user hasn't interacted with the map recently
         duration: 1000

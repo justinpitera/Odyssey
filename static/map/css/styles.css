@@ -129,3 +129,30 @@ body, html {
 .modal-exit {
     animation: popOut 0.5s forwards;
 }
+
+#search-input:focus {
+    border-color: rgb(17,24,39); /* Change this color to match your site's theme */
+}
+
+#search-input::placeholder {
+    color: #aaa; /* Placeholder text color */
+    font-style: italic;
+}
+
+@media (max-width: 600px) {
+    #search-input {
+        width: 250px; /* Smaller width on smaller screens */
+    }
+}
+
+#search-bar {
+    position: absolute;
+    top: -100px; /* Start hidden */
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    transition: top 0.5s;
+}
+#search-bar.visible {
+    top: 75px; /* Slide down to show */
+}

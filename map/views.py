@@ -12,11 +12,14 @@ from django.contrib.auth.decorators import login_required
 def aircraft_map(request):
     userAircraft = Flight.objects.get(user=request.user, is_active=True)
     aircraft = Flight.objects.filter(is_active=True).exclude(user=request.user)#old
-
+    userLat = userAircraft.aircraft_latitude
+    userLon = userAircraft.aircraft_longitude
     context = {
         'aircraft': aircraft,
         'userAircraft': userAircraft,
-        'page_title': 'Map - Odyssey'
+        'page_title': 'Map - Odyssey',
+        'userLat': userLat,
+        'userLon': userLon
     }
     return render(request, 'map/map.html', context)
 
@@ -77,49 +80,105 @@ from django.conf import settings
 from django.db.models import Q
 import os
 
+from django.http import JsonResponse
+import os
+import csv
+from django.conf import settings
+
 def airports_view(request):
     # Extract viewport bounds from request parameters
-    north_bound = float(request.GET.get('northBound'))
-    south_bound = float(request.GET.get('southBound'))
-    east_bound = float(request.GET.get('eastBound'))
-    west_bound = float(request.GET.get('westBound'))
+    north_bound = float(request.GET.get('northBound', '90'))  # Default to max lat if not provided
+    south_bound = float(request.GET.get('southBound', '-90'))  # Default to min lat if not provided
+    east_bound = float(request.GET.get('eastBound', '180'))  # Default to max long if not provided
+    west_bound = float(request.GET.get('westBound', '-180'))  # Default to min long if not provided
     zoom_level = float(request.GET.get('zoom', 10))  # Default zoom level if not provided
 
     airports = []
+    searchList = []
+
+    try:
+        with open(os.path.join(settings.STATIC_ROOT, 'data', 'airports.csv'), newline='', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            next(reader, None)  # Skip the header row
+
+            for row in reader:
+                lat = float(row[4])
+                lng = float(row[5])
+                airport_type = row[2]
+                name = row[3]
+                coordinates = f"{lng}, {lat}"
+                municipality = row[10]
+
+                # Add to searchList
+                searchList.append({
+                    'name': name,
+                    'type': airport_type,
+                    'coordinates': coordinates,
+                    'municipality': municipality,
+                })
+
+                # Filter for viewport
+                if south_bound <= lat <= north_bound and west_bound <= lng <= east_bound:
+                    include_airport = False
+
+                    # Adjust airport inclusion based on zoom level
+                    if zoom_level > 10:  
+                        include_airport = True
+                    elif zoom_level > 8.1 and airport_type in ['large_airport', 'medium_airport', 'heliport']:
+                        include_airport = True
+                    elif zoom_level > 4.5 and (airport_type == 'large_airport' or (airport_type == 'medium_airport' and 'international' in row[3].lower())):
+                        include_airport = True
+                    
+                    if include_airport:
+                        airports.append({
+                            'name': name,
+                            'type': airport_type,
+                            'coordinates': coordinates,
+                            'municipality': municipality,
+                        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
     
+    query = request.GET.get('query', '').lower()
+    results = []
+
     with open(os.path.join(settings.STATIC_ROOT, 'data', 'airports.csv'), newline='', encoding='utf-8') as csvfile:
         reader = csv.reader(csvfile)
         next(reader, None)  # Skip the header row
-
         for row in reader:
-            lat = float(row[4])
-            lng = float(row[5])
-            
-            if south_bound <= lat <= north_bound and west_bound <= lng <= east_bound:
-                airport_type = row[2]
-                include_airport = False
-                
-                # Adjust airport inclusion based on zoom level
-                if zoom_level > 10:  
-                    include_airport = True
-                elif zoom_level > 8.1:  
-                    if airport_type in ['large_airport', 'medium_airport', 'heliport']:
-                        include_airport = True
-                elif zoom_level > 4.5: 
-                    if airport_type == 'large_airport' or (airport_type == 'medium_airport' and 'international' in row[3].lower()):
-                        include_airport = True
-                
-                if include_airport:
-                    airports.append({
-                        'name': row[3],
-                        'type': airport_type,
-                        'coordinates': row[5] + ", " + row[4],
-                        'municipality': row[10],
-                    })
+            if query in row[3].lower():  # Assuming row[3] contains the airport name
+                results.append({
+                    'name': row[3],
+                    'type': row[2],
+                    'coordinates': f"{row[5]}, {row[4]}",
+                    'municipality': row[10],
+                })
 
-    return JsonResponse({'airports': airports}, safe=False)
+    return JsonResponse({'airports': airports, 'searchList': searchList}, safe=False)
 
 
+
+def search_airports(request):
+    query = request.GET.get('query', '').lower()
+    results = []
+
+    with open(os.path.join(settings.STATIC_ROOT, 'data', 'airports.csv'), newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None)  # Skip the header row
+        for row in reader:
+            if query in row[3].lower() or query in row[1].lower():  # Assuming row[3] contains the airport name
+                results.append({
+                    'ident': row[1],
+                    'name': row[3],
+                    'type': row[2],
+                    'coordinates': f"{row[5]}, {row[4]}",
+                    'municipality': row[10],
+                    'lat': f"{row[5]}",
+                    'lon': f"{row[4]}"
+                })
+
+    return JsonResponse(results, safe=False)
 
 
 
