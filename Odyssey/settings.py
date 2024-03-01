@@ -33,7 +33,6 @@ INSTALLED_APPS = [
     'schedule',
     'api',
     'map',
-    'leaflet',
 ]
 
 MIDDLEWARE = [

@@ -133,7 +133,10 @@ body, html {
 #search-input:focus {
     border-color: rgb(17,24,39); /* Change this color to match your site's theme */
 }
-
+.title-bar {
+    z-index: 20; /* Adjust as necessary to be above other page content */
+  }
+  
 #search-input::placeholder {
     color: #aaa; /* Placeholder text color */
     font-style: italic;
@@ -155,4 +158,14 @@ body, html {
 }
 #search-bar.visible {
     top: 75px; /* Slide down to show */
+}
+
+.card-header {
+    background-color: #f0f0f0; /* Light gray background */
+    padding: 10px;
+    cursor: grab; /* Change cursor to indicate draggable area */
+}
+
+.card-header:active {
+    cursor: grabbing;
 }

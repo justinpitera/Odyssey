@@ -1,196 +1,136 @@
-
 {% load static %}
 <!DOCTYPE html>
 <html>
-<head>
-    <link rel="stylesheet" href="{% static 'map/css/styles.css' %}">
+    <head>
+        <link rel="stylesheet" href="{% static 'map/css/styles.css' %}">
+        <!-- Leaflet related styles and scripts -->
+        <link rel="stylesheet" href="{% static 'leaflet/css/leaflet.css'%}" />
+        <script src="{% static 'leaflet/js/leaflet.js' %}"></script>
+        <script src="{% static 'leaflet/js/leaflet-ant-path.js' %}"></script>
+        <script src="{% static 'leaflet/js/leaflet.markercluster-src.js' %}"></script>
+        <script src='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js'></script>
+        <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css' rel='stylesheet' />
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{page_title}}</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="{% static 'base/js/hamburgerMenu.js' %}"></script>
+        <link rel="stylesheet" href="{% static 'base/css/styles.css' %}">
+        <link href="https://cdn.jsdelivr.net/gh/eliyantosarage/font-awesome-pro@main/fontawesome-pro-6.5.1-web/css/all.min.css" rel="stylesheet">
+        <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.ico' %}" >
+    </head>
+    <body>
+        <div id="search-bar" style="position: absolute; top: 50px; left: 50%; transform: translateX(-50%); z-index: 1000;">
+            <input type="text" placeholder="Search..." id="search-input" style="padding: 10px 10px 10px 40px; width: 400px; border-radius: 20px;">
+            <i class="fas fa-search" style="position: absolute; top: 15px; left: 10px; color: #aaa;"></i>
+            <i class="fas fa-times" id="clear-input" style="position: absolute; top: 15px; right: 10px; color: #aaa; cursor: pointer;"></i>
+            <div id="search-results" style="display: none; position: absolute; top: 105px; left: 50%; transform: translateX(-50%); background-color: white; border: 1px solid #aaa; border-radius: 5px; width: 400px; max-height: 300px; overflow-y: auto; z-index: 1001;"></div>
+        </div>
+        <script>
 
-
-
-    <!-- Leaflet related styles and scripts -->
-    <link rel="stylesheet" href="{% static 'leaflet/css/leaflet.css'%}" />
-    <script src="{% static 'leaflet/js/leaflet.js' %}"></script>
-    <script src="{% static 'leaflet/js/leaflet-ant-path.js' %}"></script>
-    <script src="{% static 'leaflet/js/leaflet.markercluster-src.js' %}"></script>
-
-    <script src='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css' rel='stylesheet' />
-
-
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{page_title}}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="{% static 'base/js/hamburgerMenu.js' %}"></script>
-    <link rel="stylesheet" href="{% static 'base/css/styles.css' %}">
-    <link href="https://cdn.jsdelivr.net/gh/eliyantosarage/font-awesome-pro@main/fontawesome-pro-6.5.1-web/css/all.min.css" rel="stylesheet">
-    <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.ico' %}" >
-
-
-</head>
-<body>
-
-    
-    <div id="search-bar" style="position: absolute; top: 50px; left: 50%; transform: translateX(-50%); z-index: 1000;">
-        <input type="text" placeholder="Search..." id="search-input" style="padding: 10px 10px 10px 40px; width: 400px; border-radius: 20px;">
-        <i class="fas fa-search" style="position: absolute; top: 15px; left: 10px; color: #aaa;"></i>
-        <i class="fas fa-times" id="clear-input" style="position: absolute; top: 15px; right: 10px; color: #aaa; cursor: pointer;"></i>
-        <div id="search-results" style="display: none; position: absolute; top: 105px; left: 50%; transform: translateX(-50%); background-color: white; border: 1px solid #aaa; border-radius: 5px; width: 400px; max-height: 300px; overflow-y: auto; z-index: 1001;"></div>
-    </div>
-    
-
-
-    <script>
-        const toggleButton = document.getElementById('toggle-search');
-        const searchBar = document.getElementById('search-bar');
-        let isVisible = true; // Initially visible
-    
-        toggleButton.addEventListener('click', () => {
-            isVisible = !isVisible;
-            searchBar.style.opacity = isVisible ? '1' : '0';
-            searchBar.style.visibility = isVisible ? 'visible' : 'hidden';
-        });
-    </script>
-    
-
-    
-    <script>
-        const placeholders = [
+            const placeholders = [
             "Search for airports...",
             "Search for helipads...",
             "Search for waypoints...",
             "Search by flight number...",
-            "Search by username..."
-        ];
-        let index = 0;
-    
-        const searchInput = document.getElementById("search-input");
-        function animatePlaceholder() {
+            "Search by username...",
+            "Search by aircraft type..."
+            ];
+            let index = 0;
+
+            const searchInput = document.getElementById("search-input");
+            function animatePlaceholder() {
             searchInput.placeholder = placeholders[index];
             index = (index + 1) % placeholders.length; // Loop back to the start
             setTimeout(animatePlaceholder, 3000); // Change every 3 seconds
-        }
-    
-        animatePlaceholder(); // Start the animation
-    </script>
-    
-    
-    
-    <!-- Map toolbar -->
-    <div id="map-toolbar" style="position: absolute; bottom: 25px; right: 20px; z-index: 1000; display: flex;">
-        <select id="styleSelector">
-            <option value="mapbox://styles/mapbox/streets-v11">Streets</option>
-            <option value="mapbox://styles/mapbox/outdoors-v11">Outdoors</option>
-            <option value="mapbox://styles/mapbox/light-v10">Light</option>
-            <option value="mapbox://styles/mapbox/dark-v10" selected>Dark</option>
-            <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
-            <option value="mapbox://styles/mapbox/satellite-streets-v11">Satellite Streets</option>
-          </select>
-          
-        <button id="toggle-rotation" class="toolbar-btn">
-            <i class="fa-solid fa-magnifying-glass-arrows-rotate"></i>
-        </button>
-        <button class="toolbar-btn">
-            <i class="fa-solid fa-layer-group"></i>
-        </button>
-        <button id="filters-btn" class="toolbar-btn">
-            <i class="fas fa-filter"></i>
-        </button>
-
-        <!-- You can add more buttons with different functionalities as needed -->
-    </div>
-
-
-<!-- Filters modal -->
-<div id="modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-0 overflow-y-auto h-full w-full" style="z-index: 1050;">
-    <div class="relative top-40 mx-auto p-5 w-96 shadow-lg rounded-md bg-gray-900" style="transition: transform .5s ease;">
-        <div class="flex justify-between items-center">
-            <h3 class="text-xl">Filters</h3>
-            <button id="close-modal" class="text-black">&times;</button>
-        </div>
-        <div class="my-4">
-            <p>Content for filters...</p>
-        </div>
-        <div class="flex justify-end">
-            <button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700 transition duration-300">Apply</button>
-        </div>
-    </div>
-</div>
-
-
-<div id="map"></div>
-
-
-
-<script src="{% static 'map/js/modal.js' %}"></script>
-
-
-
-<script>
-    mapboxgl.accessToken = 'pk.eyJ1Ijoib2R5c3NleWNsaWVudCIsImEiOiJjbHQ2MGh2NDMwNmE2MnJvZXhwdWIwZmJpIn0._1PC-pg9OaMJldN9svTWwg';
-    const map = new mapboxgl.Map({
-        container: 'map', // container ID
-        style: 'mapbox://styles/mapbox/dark-v11', // Initial map style
-        center: [0, 0], // Starting position
-        zoom: 1, // Starting zoom
-        projection: 'globe' // Enable the globe projection
-    });
-    
-    map.on('load', () => {
-        // Initial setting of terrain, sky, and fog
-        setTerrainSkyAndFog(map.getStyle().id);
-    });
-    
-    function setTerrainSkyAndFog(style) {
-        map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
-    
-        const isDarkStyle = style.includes('dark');
-        map.addLayer({
-            'id': 'sky',
-            'type': 'sky',
-            'paint': {
-                // Adjust these values based on the style
-                'sky-type': 'atmosphere',
-                'sky-atmosphere-sun': [0.0, 0.0],
-                'sky-atmosphere-sun-intensity': isDarkStyle ? 15 : 5,
-                'sky-atmosphere-color': isDarkStyle ? '#000511' : '#88ccee',
-                'sky-opacity': [
-                    'interpolate',
-                    ['linear'],
-                    ['zoom'],
-                    0,
-                    1,
-                    22,
-                    1
-                ]
             }
-        });
-    
-        map.setFog({
-            // Adjust these values based on the style
-            'color': isDarkStyle ? '#000' : '#eaeaea',
-            'range': [1.0, 20],
-            'horizon-blend': isDarkStyle ? 0.1 : 0.2,
-        });
-    }
-    
-    document.getElementById('styleSelector').addEventListener('change', function() {
-        var selectedStyle = this.value;
-        map.setStyle(selectedStyle);
-    
-        // Because setStyle will remove and re-add all layers/sources, wait for the style to load before re-adding them
-        map.once('style.load', () => {
-            setTerrainSkyAndFog(selectedStyle);
-            drawWaypointsAndRoute(); // Ensure this function can handle being called multiple times
-        });
-    });
-    </script>
-    
-    
 
-<script src="{% static 'map/js/airports.js' %}"></script>
-<script src="{% static 'map/js/aircraft.js' %}"></script>
-<script src="{% static 'map/js/waypoints.js' %}"></script>
-<script src="{% static 'map/js/search.js' %}"></script>
-</body>
+            animatePlaceholder(); // Start the animation
+        </script>
+        <!-- Map toolbar -->
+        <div id="map-toolbar" style="position: absolute; bottom: 25px; right: 20px; z-index: 1000; display: flex;">
+            <select id="styleSelector">
+                <option value="mapbox://styles/mapbox/streets-v11">Streets</option>
+                <option value="mapbox://styles/mapbox/outdoors-v11">Outdoors</option>
+                <option value="mapbox://styles/mapbox/light-v10">Light</option>
+                <option value="mapbox://styles/mapbox/dark-v10" selected>Dark</option>
+                <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
+                <option value="mapbox://styles/mapbox/satellite-streets-v11">Satellite Streets</option>
+            </select>
+            <button id="toggle-rotation" class="toolbar-btn">
+            <i class="fa-solid fa-magnifying-glass-arrows-rotate"></i>
+            </button>
+            <button class="toolbar-btn">
+            <i class="fa-solid fa-layer-group"></i>
+            </button>
+            <button id="filters-btn" class="toolbar-btn">
+            <i class="fas fa-filter"></i>
+            </button>
+        </div>
+        <div id="map"></div>
+        <script>
+            mapboxgl.accessToken = 'pk.eyJ1Ijoib2R5c3NleWNsaWVudCIsImEiOiJjbHQ2MGh2NDMwNmE2MnJvZXhwdWIwZmJpIn0._1PC-pg9OaMJldN9svTWwg';
+            const map = new mapboxgl.Map({
+                container: 'map', // container ID
+                style: 'mapbox://styles/mapbox/dark-v11', // Initial map style
+                center: [0, 0], // Starting position
+                zoom: 1, // Starting zoom
+                projection: 'globe' // Enable the globe projection
+            });
+            
+            map.on('load', () => {
+                // Initial setting of terrain, sky, and fog
+                setTerrainSkyAndFog(map.getStyle().id);
+            });
+            
+            function setTerrainSkyAndFog(style) {
+                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
+            
+                const isDarkStyle = style.includes('dark');
+                map.addLayer({
+                    'id': 'sky',
+                    'type': 'sky',
+                    'paint': {
+                        // Adjust these values based on the style
+                        'sky-type': 'atmosphere',
+                        'sky-atmosphere-sun': [0.0, 0.0],
+                        'sky-atmosphere-sun-intensity': isDarkStyle ? 15 : 5,
+                        'sky-atmosphere-color': isDarkStyle ? '#000511' : '#88ccee',
+                        'sky-opacity': [
+                            'interpolate',
+                            ['linear'],
+                            ['zoom'],
+                            0,
+                            1,
+                            22,
+                            1
+                        ]
+                    }
+                });
+            
+                map.setFog({
+                    // Adjust these values based on the style
+                    'color': isDarkStyle ? '#000' : '#eaeaea',
+                    'range': [1.0, 20],
+                    'horizon-blend': isDarkStyle ? 0.1 : 0.2,
+                });
+            }
+            
+            document.getElementById('styleSelector').addEventListener('change', function() {
+                var selectedStyle = this.value;
+                map.setStyle(selectedStyle);
+            
+                // Because setStyle will remove and re-add all layers/sources, wait for the style to load before re-adding them
+                map.once('style.load', () => {
+                    setTerrainSkyAndFog(selectedStyle);
+                    drawWaypointsAndRoute(); // Ensure this function can handle being called multiple times
+                });
+            });
+        </script>
+        <script src="{% static 'map/js/airports.js' %}"></script>
+        <script src="{% static 'map/js/aircraft.js' %}"></script>
+        <script src="{% static 'map/js/waypoints.js' %}"></script>
+        <script src="{% static 'map/js/search.js' %}"></script>
+        <script src="{% static 'map/js/window.js' %}"></script>
+    </body>
 </html>
