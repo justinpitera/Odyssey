@@ -1,5 +1,7 @@
 const aircraftMarkers = {};
 let playerAircraftAdded = false;
+var userId = document.body.getAttribute('data-user-id');
+
 
 function updateAircraftPositions() {
   fetchAircraftPositions()
@@ -16,16 +18,29 @@ function fetchAircraftPositions() {
 
 function updateMarkers(newAircraftPositions) {
   newAircraftPositions.forEach(updateOrAddMarker);
+  for (i = 0; i < newAircraftPositions.length; i++) {
+    console.log(newAircraftPositions[i].userId);
+  }
 }
 
 function updateOrAddMarker(newAircraftPosition) {
-  const isPlayerAircraft = !playerAircraftAdded;
+
+  var isPlayerAircraft = false;
+  if (Number(newAircraftPosition.userId) === Number(userId)) {
+    isPlayerAircraft = true;
+  }
+  else {
+    isPlayerAircraft = false;
+  }
+  console.log(isPlayerAircraft, newAircraftPosition.userId, userId);
+
   const aircraftHtml = getAircraftIconHtml(newAircraftPosition.heading, isPlayerAircraft);
 
   if (aircraftMarkers[newAircraftPosition.flight_number]) {
     updateExistingMarker(aircraftMarkers[newAircraftPosition.flight_number], newAircraftPosition);
   } else {
     addNewMarker(newAircraftPosition, isPlayerAircraft);
+    // Mark playerAircraftAdded true if this is the player's aircraft to avoid re-adding it
     if (isPlayerAircraft) playerAircraftAdded = true;
   }
 }
@@ -49,9 +64,18 @@ function getTrueHeading(heading) {
 }
 
 function updateExistingMarker(markerObj, position) {
+  // Update marker position
   markerObj.marker.setLngLat([position.longitude, position.latitude]);
+  
+  // Update marker icon
   markerObj.marker.getElement().innerHTML = getAircraftIconHtml(position.heading, markerObj.isPlayer);
+  
+  // Update popup content
+  if (markerObj.marker.getPopup()) { // Check if the marker has a popup
+    markerObj.marker.getPopup().setHTML(getPopupContent(position));
+  }
 }
+
 function updateIconRotation(el, aircraftHeading) {
   // Get the current bearing of the map
   const mapBearing = map.getBearing();

@@ -21,14 +21,13 @@ function createAndAddMarker(airport) {
     el.className = 'marker';
     // Assign icon based on airport type
     if (airport.type === 'large_airport') {
-        el.innerHTML = '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 20px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" "></i>'; // Example icon for large airports
+        el.innerHTML = '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 20px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" "></i>';
     } else if (airport.type === 'medium_airport') {
-        el.innerHTML = '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 20px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" "></i>'; // Example icon for medium airports
+        el.innerHTML = '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 20px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" "></i>'; 
     } else if (airport.type === 'heliport') {
-        el.innerHTML = '<i class="fa-solid fa-helicopter-symbol" style="color: #013220; font-size: 14px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" ></i>'; // Example icon for heliports with black outline and shadow
+        el.innerHTML = '<i class="fa-solid fa-helicopter-symbol" style="color: #013220; font-size: 14px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" ></i>'; 
     } else if (airport.type === 'small_airport') {
-    el.innerHTML = '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 14px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" ></i>'; // Example icon for heliports with black outline and shadow
-    // Example icon for heliports
+    el.innerHTML = '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 14px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;" ></i>'; 
     }
 
 

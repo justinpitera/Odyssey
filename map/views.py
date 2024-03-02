@@ -10,17 +10,24 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def aircraft_map(request):
-    userAircraft = Flight.objects.get(user=request.user, is_active=True)
-    aircraft = Flight.objects.filter(is_active=True).exclude(user=request.user)#old
-    userLat = userAircraft.aircraft_latitude
-    userLon = userAircraft.aircraft_longitude
-    context = {
-        'aircraft': aircraft,
-        'userAircraft': userAircraft,
-        'page_title': 'Map - Odyssey',
-        'userLat': userLat,
-        'userLon': userLon
-    }
+    try:
+        userAircraft = Flight.objects.get(user=request.user, is_active=True)
+        aircraft = Flight.objects.filter(is_active=True).exclude(user=request.user)#old
+        userLat = userAircraft.aircraft_latitude
+        userLon = userAircraft.aircraft_longitude
+        context = {
+            'aircraft': aircraft,
+            'userAircraft': userAircraft,
+            'page_title': 'Map - Odyssey',
+            'userLat': userLat,
+            'userLon': userLon
+        }
+    except Flight.DoesNotExist:
+        aircraft = Flight.objects.filter(is_active=True)
+        context = {
+            'aircraft': aircraft,
+            'page_title': 'Map - Odyssey',
+        }
     return render(request, 'map/map.html', context)
 
 def aircraft_data(request):
@@ -38,6 +45,7 @@ def aircraft_data(request):
             'ground_speed': flight.aircraft_ground_speed,
             # Assuming 'username' is the concatenated first name and last name of the flight's user
             'username': flight.user.first_name + " " + flight.user.last_name if flight.user else "Unknown",
+            'userId': flight.user.id if flight.user else None,
             'flight_number': flight.flight_number,
         }
         flights_data.append(flight_data)
