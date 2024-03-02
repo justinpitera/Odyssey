@@ -18,9 +18,6 @@ function fetchAircraftPositions() {
 
 function updateMarkers(newAircraftPositions) {
   newAircraftPositions.forEach(updateOrAddMarker);
-  for (i = 0; i < newAircraftPositions.length; i++) {
-    console.log(newAircraftPositions[i].userId);
-  }
 }
 
 function updateOrAddMarker(newAircraftPosition) {
@@ -32,7 +29,7 @@ function updateOrAddMarker(newAircraftPosition) {
   else {
     isPlayerAircraft = false;
   }
-  console.log(isPlayerAircraft, newAircraftPosition.userId, userId);
+
 
   const aircraftHtml = getAircraftIconHtml(newAircraftPosition.heading, isPlayerAircraft);
 

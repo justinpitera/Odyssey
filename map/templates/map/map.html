@@ -38,27 +38,29 @@
             <div id="search-results" style="display: none; position: absolute; top: 105px; left: 50%; transform: translateX(-50%); background-color: white; border: 1px solid #aaa; border-radius: 5px; width: 400px; max-height: 300px; overflow-y: auto; z-index: 1001;"></div>
         </div>
         <script>
-        
-
             const placeholders = [
-            "Search for airports...",
-            "Search for helipads...",
-            "Search for waypoints...",
-            "Search by flight number...",
-            "Search by username...",
-            "Search by aircraft type..."
+                "Search for airports...",
+                "Search for helipads...",
+                "Search for waypoints...",
+                "Search by flight number...",
+                "Search by username...",
+                "Search by aircraft type...",
+                "Search by frequency...",
+                "Search by tower name...",
+                "Search by VATSIM CID...",
             ];
-            let index = 0;
-
+        
             const searchInput = document.getElementById("search-input");
+        
             function animatePlaceholder() {
-            searchInput.placeholder = placeholders[index];
-            index = (index + 1) % placeholders.length; // Loop back to the start
-            setTimeout(animatePlaceholder, 3000); // Change every 3 seconds
+                const randomIndex = Math.floor(Math.random() * placeholders.length);
+                searchInput.placeholder = placeholders[randomIndex];
+                setTimeout(animatePlaceholder, 3000); // Change every 3 seconds
             }
-
+        
             animatePlaceholder(); // Start the animation
         </script>
+        
         <!-- Map toolbar -->
         <div id="map-toolbar" style="position: absolute; bottom: 25px; right: 20px; z-index: 1000; display: flex;">
             <select id="styleSelector">
@@ -80,6 +82,14 @@
             </button>
         </div>
         <div id="map"></div>
+        <div style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
+
+        
+            <!-- Text -->
+            <span style="margin-left: 5px; color: white;">Odyssey Network</span>
+        </div>
+        
+        
         <script>
             mapboxgl.accessToken = 'pk.eyJ1Ijoib2R5c3NleWNsaWVudCIsImEiOiJjbHQ2MGh2NDMwNmE2MnJvZXhwdWIwZmJpIn0._1PC-pg9OaMJldN9svTWwg';
             const map = new mapboxgl.Map({
@@ -96,7 +106,7 @@
 
                 // Add fog to create a misty effect, especially at higher altitudes or distances
                 map.setFog({
-                    'range': [-1, 1.5],
+                    'range': [0, 1.5],
                     'color': '#4e4e52', // Adjust the color to fit the dark theme
                     'horizon-blend': 0.04,
                 });
@@ -127,10 +137,10 @@
                 map.once('style.load', () => {
                     // Ensure this function can handle being called multiple times
                     drawWaypointsAndRoute();
-
+                    startImage();
                     // Reapply fog, light, and atmosphere settings since setStyle removes them
                     map.setFog({
-                        'range': [-1, 1.5],
+                        'range': [0, 1.5],
                         'color': '#4e4e52',
                         'horizon-blend': 0.04,
                     });
@@ -150,6 +160,7 @@
                         });
                     }
                 });
+
             });
         </script>
         <script src="{% static 'map/js/airports.js' %}"></script>

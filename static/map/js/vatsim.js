@@ -3,33 +3,98 @@
 // Initialize an object to keep track of vatsimMarkers by cid
 const vatsimMarkers = {};
 
-// Function to create an SVG element with rotation and drop shadow
-function createRotatedSvg(heading) {
-    const shadowFilter = `
-        <filter id="dropshadow" height="130%">
-            <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
-            <feOffset dx="2" dy="2" result="offsetblur"/>
-            <feComponentTransfer>
-                <feFuncA type="linear" slope="0.5"/>
-            </feComponentTransfer>
-            <feMerge> 
-                <feMergeNode/>
-                <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-        </filter>
-    `;
-    const svgPath = `M429.6 92.1c4.9-11.9 2.1-25.6-7-34.7s-22.8-11.9-34.7-7l-352 144c-14.2 5.8-22.2 20.8-19.3 35.8s16.1 25.8 31.4 25.8H224V432c0 15.3 10.8 28.4 25.8 31.4s30-5.1 35.8-19.3l144-352z`;
+// Initialize an object to keep track of GeoJSON features by cid
+const vatsimGeoJSON = {};
 
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="50" height="50">
-                <defs>
-                    ${shadowFilter}
-                </defs>
-                <path d="${svgPath}" transform="translate(112, 128) rotate(${heading}, 112, 128) scale(0.25)" fill="#000" />
-                <path d="${svgPath}" transform="translate(112, 128) rotate(${heading}, 112, 128) scale(0.25)" fill="#00ffff"/>
-            </svg>`;
+// Map to track active popups by pilot ID
+const activePopups = {}; 
+
+
+
+// Function to fetch and update pilots directly without a worker
+function fetchAndUpdatePilotsDirectly() {
+    fetch('https://data.vatsim.net/v3/vatsim-data.json')
+        .then(response => response.json())
+        .then(data => {
+            const pilots = data.pilots;
+            // Assuming you have a way to filter or process these pilots as needed
+            updateMapWithPilots(pilots);
+        })
+        .catch(err => console.error('Error fetching VATSIM data:', err));
+}
+// Function to update the map with pilots' data
+function updateMapWithPilots(pilots) {
+    pilots.forEach(pilot => {
+        const pilotId = `pilot-${pilot.cid}`;
+        const markerLngLat = [pilot.longitude, pilot.latitude];
+
+        // Update GeoJSON feature for each pilot
+        const feature = {
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: markerLngLat
+            },
+            properties: {
+                id: pilotId,
+                icon: iconId, // Use the PNG icon
+                name: pilot.name,
+                groundspeed: pilot.groundspeed,
+                altitude: pilot.altitude,
+                heading: getTrueHeading(pilot.heading)
+            }
+        };
+        // Check if there's an existing popup for this pilot and update it
+        if (activePopups[pilotId]) {
+            const popupContent = generatePopupContent(pilot);
+            activePopups[pilotId].setHTML(popupContent);
+        }
+
+        // Update or add the feature in vatsimGeoJSON object
+        vatsimGeoJSON[pilotId] = feature;
+    });
+
+    // Update or add the GeoJSON source for the pilots on the map
+    if (map.getSource('vatsim')) {
+        const source = map.getSource('vatsim');
+        source.setData({
+            type: 'FeatureCollection',
+            features: Object.values(vatsimGeoJSON)
+        });
+    } else {
+        map.addSource('vatsim', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: Object.values(vatsimGeoJSON)
+            }
+        });
+        map.addLayer({
+            id: 'vatsim-markers',
+            type: 'symbol',
+            source: 'vatsim',
+            layout: {
+                'icon-image': iconId,
+                'icon-rotate': ['get', 'heading'],
+                'icon-allow-overlap': true,
+                'icon-size': 0.045 // Adjust size as needed
+            }
+        });
+    }
 }
 
-// Check if Web Workers are supported
+
+
+function getTrueHeading(heading) {
+    // Get the current bearing of the map
+    const mapBearing = map.getBearing();
+    // The desired rotation of the marker is the negative of the map's bearing plus the aircraft's heading.
+    // This ensures the marker remains oriented to the earth, not the map's rotation.
+    const rotation = heading - mapBearing;
+    return rotation;
+}
+
+// Check if Web Workers are supported and initialize worker or fallback
 if (window.Worker) {
     const vatsimWorker = new Worker('/static/map/js/vatsimWorker.js');
 
@@ -38,72 +103,76 @@ if (window.Worker) {
         updateMapWithPilots(pilots);
     });
 
+    // Modify updatePilots to send message to worker
     function updatePilots() {
         let currentBounds = map.getBounds().toArray();
-        // Expand the bounds by a certain percentage, for example, 10%
-        let expansionRatio = 0.1;
-        let latDiff = (currentBounds[1][1] - currentBounds[0][1]) * expansionRatio;
-        let lngDiff = (currentBounds[1][0] - currentBounds[0][0]) * expansionRatio;
-        // Expanded bounds
-        let expandedBounds = [
-            [currentBounds[0][0] - lngDiff, currentBounds[0][1] - latDiff], // Southwest corner
-            [currentBounds[1][0] + lngDiff, currentBounds[1][1] + latDiff]  // Northeast corner
-        ];
-        vatsimWorker.postMessage({ action: 'updatePilots', mapBounds: expandedBounds });
-    }    
+        // Logic to expand the bounds and request updates goes here...
+        vatsimWorker.postMessage({ action: 'updatePilots', /* additional data */ });
+    }
 } else {
     console.log('Web Workers are not supported in your browser.');
+    // Use the direct fetch and update method as a fallback
+    function updatePilots() {
+        fetchAndUpdatePilotsDirectly();
+    }
 }
 
-function updateMapWithPilots(pilots) {
-    const bounds = map.getBounds(); // Get the current bounds of the map viewport
 
-    pilots.forEach(pilot => {
-        const pilotId = `pilot-${pilot.cid}`;
-        const markerLngLat = [pilot.longitude, pilot.latitude];
-
-        // Create or update marker
-        if (!vatsimMarkers[pilotId]) {
-            // Create marker if not already present
-            const el = document.createElement('div');
-            el.innerHTML = createRotatedSvg(pilot.heading);
-            el.firstChild.style.display = 'block';
-
-            const popup = new mapboxgl.Popup({ offset: 25 });
-
-            const marker = new mapboxgl.Marker(el)
-                .setLngLat(markerLngLat)
-                .setPopup(popup)
-                .addTo(map);
-
-            vatsimMarkers[pilotId] = { marker, popup };
-        } else {
-            // Update marker if already present
-            const marker = vatsimMarkers[pilotId].marker;
-            const el = document.createElement('div');
-            el.innerHTML = createRotatedSvg(pilot.heading);
-            marker.getElement().replaceChild(el.firstChild, marker.getElement().firstChild);
-            marker.setLngLat(markerLngLat);
-        }
-
-        // Update popup if marker is within the viewport
-        if (bounds.contains(markerLngLat)) {
-            const popup = vatsimMarkers[pilotId].popup;
-            popup.setHTML(`
-                Name: ${pilot.name}<br>
-                Speed: ${pilot.groundspeed} kts<br>
-                Altitude: ${pilot.altitude} ft<br>
-                Location: ${pilot.latitude.toFixed(2)}, ${pilot.longitude.toFixed(2)}
-            `);
-        }
+// URL to your PNG image for the airplane icon
+const iconId = 'airplane-icon'; // A constant ID for the PNG icon
+const imageUrl = '/static/images/location-arrow-vatsim.png'; // Change this to the URL of your PNG image
+function startImage() {
+    console.log('Image loaded');
+// Load the airplane icon once and then start the update process
+if (!map.hasImage(iconId)) {
+    map.loadImage(imageUrl, function(error, image) {
+        if (error) throw error;
+        map.addImage(iconId, image);
+        
+        // Initial update
+        updatePilots();
     });
+} else {
+    // Image already exists, proceed with updating pilots
+    updatePilots();
+}
+
 }
 
 
+map.on('click', 'vatsim-markers', function(e) {
+    var feature = e.features[0];
+    var pilotId = feature.properties.id;
+
+    if (!activePopups[pilotId]) {
+        var popup = new mapboxgl.Popup()
+            .setLngLat(feature.geometry.coordinates)
+            .setHTML(generatePopupContent(feature.properties))
+            .addTo(map)
+            .on('close', () => delete activePopups[pilotId]); // Cleanup on close
+        
+        activePopups[pilotId] = popup;
+    } else {
+        // Bring the existing popup to front
+        activePopups[pilotId].addTo(map);
+    }
+});
 
 
-// Initial update
-updatePilots();
+function generatePopupContent(pilot) {
+    return `
+        <h3>Pilot Information</h3>
+        <p><strong>Name:</strong> ${pilot.name}</p>
+        <p><strong>Groundspeed:</strong> ${pilot.groundspeed} knots</p>
+        <p><strong>Altitude:</strong> ${pilot.altitude} feet</p>
+        <p><strong>Heading:</strong> ${pilot.heading}°</p>
+    `;
+}
+
 
 // Update pilots every 15 seconds
 setInterval(updatePilots, 15000);
+
+startImage();
+
+

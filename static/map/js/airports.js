@@ -35,7 +35,7 @@ function createAndAddMarker(airport) {
     var marker = new mapboxgl.Marker(el)
         .setLngLat(airport.coordinates.split(',').map(coord => parseFloat(coord.trim())))
         .setPopup(new mapboxgl.Popup({ offset: 25 })
-        .setHTML('<h3>' + airport.name + '</h3><p>' + airport.municipality + '</p>'))
+        .setHTML('<h3>' + airport.name + '</h3><p>' + airport.ident + '</p>'))
         .addTo(map);
 
     markers.push(marker); // Track this marker

@@ -132,6 +132,7 @@ def airports_view(request):
                 'type': airport.type,
                 'coordinates': coordinates,
                 'municipality': airport.iso_region,  # Assuming iso_region is used in place of municipality
+                'ident': airport.ident,
             })
 
         # Assuming you want to add all queried airports to searchList regardless of the zoom level
