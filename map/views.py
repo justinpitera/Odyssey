@@ -73,6 +73,24 @@ def waypoints_view(request):
 
     return JsonResponse({'waypoints': waypoints})
 
+from django.views.decorators.http import require_http_methods
+
+import requests
+
+@require_http_methods(["GET"])
+def fetch_vatsim_data(request):
+    url = 'https://data.vatsim.net/v3/vatsim-data.json'
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
+        data = response.json()
+
+        pilots_data = data.get('pilots', [])
+        # You can now process pilots_data as needed or return it directly
+        return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
+    except requests.RequestException as e:
+        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
+
 
 
 

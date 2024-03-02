@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import aircraft_data, aircraft_map, waypoints_view, waypoint_coordinates, airports_view, search_airports, import_airports_from_csv
+from .views import aircraft_data, aircraft_map, waypoints_view, waypoint_coordinates, airports_view, search_airports, import_airports_from_csv, fetch_vatsim_data
 
 urlpatterns = [
     path('', aircraft_map, name='map'),
@@ -9,4 +9,5 @@ urlpatterns = [
     path('api/airports/', airports_view, name='airports'),
     path('search-airports/', search_airports, name='search-airports'),
     path('import-airports/', import_airports_from_csv, name='import-airports'),
+    path('vatsim-data/', fetch_vatsim_data, name='fetch-vatsim-data'),
 ]
