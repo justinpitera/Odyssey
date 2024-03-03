@@ -118,12 +118,9 @@ if (window.Worker) {
 }
 
 
-// URL to your PNG image for the airplane icon
-const iconId = 'airplane-icon'; // A constant ID for the PNG icon
-const imageUrl = '/static/images/location-arrow-vatsim.png'; // Change this to the URL of your PNG image
+const iconId = 'airplane-icon'; 
+const imageUrl = '/static/images/location-arrow-vatsim.png'; 
 function startImage() {
-    console.log('Image loaded');
-// Load the airplane icon once and then start the update process
 if (!map.hasImage(iconId)) {
     map.loadImage(imageUrl, function(error, image) {
         if (error) throw error;
@@ -174,5 +171,10 @@ function generatePopupContent(pilot) {
 setInterval(updatePilots, 15000);
 
 startImage();
+
+
+
+
+
 
 

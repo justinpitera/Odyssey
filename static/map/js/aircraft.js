@@ -45,7 +45,7 @@ function updateOrAddMarker(newAircraftPosition) {
 
 // Future modification: put this in the template so the user can select the aircraft and color
 function getAircraftIconHtml(heading, isPlayerAircraft = false) {
-  const color = isPlayerAircraft ? 'orange' : 'gray';
+  const color = isPlayerAircraft ? 'orange' : 'rgb(31,41,55)';
   const size = isPlayerAircraft ? 25 : 20;
   return `<i class="fa-solid fa-location-arrow-up" style="transform: rotate(${getTrueHeading(heading)}deg); color: ${color}; font-size:${size}px; text-shadow: 4px 4px 8px rgba(0,0,0,0.5); -webkit-text-stroke: 2px black; text-stroke: 2px black;"></i>`;
 

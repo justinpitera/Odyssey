@@ -2,20 +2,19 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <!-- Meta tags for mobile -->
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black">
+        <meta name="apple-mobile-web-app-title" content="Odyssey">
+        <link rel="apple-touch-icon" href="static/images/favicon.ico">
+
         <link rel="stylesheet" href="{% static 'map/css/styles.css' %}">
-        <!-- Leaflet related styles and scripts -->
-        <link rel="stylesheet" href="{% static 'leaflet/css/leaflet.css'%}" />
-        <script src="{% static 'leaflet/js/leaflet.js' %}"></script>
-        <script src="{% static 'leaflet/js/leaflet-ant-path.js' %}"></script>
-        <script src="{% static 'leaflet/js/leaflet.markercluster-src.js' %}"></script>
         <script src='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js'></script>
         <link href='https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css' rel='stylesheet' />
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{{page_title}}</title>
         <script src="https://cdn.tailwindcss.com"></script>
-        <script src="{% static 'base/js/hamburgerMenu.js' %}"></script>
-        <link rel="stylesheet" href="{% static 'base/css/styles.css' %}">
         <link href="https://cdn.jsdelivr.net/gh/eliyantosarage/font-awesome-pro@main/fontawesome-pro-6.5.1-web/css/all.min.css" rel="stylesheet">
         <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.ico' %}" >
     </head>
@@ -82,12 +81,10 @@
             </button>
         </div>
         <div id="map"></div>
-        <div style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
-
-        
-            <!-- Text -->
-            <span style="margin-left: 5px; color: white;">Odyssey Network</span>
+        <div style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
+            <a href="{% url 'map' %}" style="margin-left: 5px; color: white; text-shadow: 3px 3px 5px rgba(0,0,0,0.5);">Odyssey Network</a>
         </div>
+
         
         
         <script>
@@ -100,6 +97,7 @@
                 projection: 'globe' // Enable the globe projection
             });
 
+            map.addControl(new mapboxgl.NavigationControl());
             map.on('load', () => {
                 // Initial setting of terrain
                 map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
@@ -169,12 +167,13 @@
         <script src="{% static 'map/js/search.js' %}"></script>
         <script src="{% static 'map/js/window.js' %}"></script>
         <script src="{% static 'map/js/vatsim.js' %}"></script>
+        <script src="{% static 'map/js/control.js' %}"></script>
         <script>
         /**
         * Main function to draw waypoints and route.
         */
         function drawWaypointsAndRoute() {
-            const simBriefApiUrl = 'https://www.simbrief.com/api/xml.fetcher.php?userid={{user.simbrief_id}}&json=1'; // Replace with your actual API URL
+            const simBriefApiUrl = 'https://www.simbrief.com/api/xml.fetcher.php?userid={{user.simbrief_id}}&json=1'; 
 
             fetchFlightPlanData(simBriefApiUrl)
                 .then(processAndDrawRoute)

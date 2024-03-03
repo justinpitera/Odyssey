@@ -1,7 +1,7 @@
 import csv
 import os
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from map.models import Airport
 from schedule.models import Flight
 from django.conf import settings
@@ -87,11 +87,31 @@ def fetch_vatsim_data(request):
 
         pilots_data = data.get('pilots', [])
         # You can now process pilots_data as needed or return it directly
+        print(pilots_data)
         return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
     except requests.RequestException as e:
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
 
+@require_http_methods(["GET"])
+def search_vatsim_pilots(request):
+    search_query = request.GET.get('query', '').lower()
+    url = 'https://data.vatsim.net/v3/vatsim-data.json'
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
 
+        filtered_pilots = []
+        for pilot in data.get('pilots', []):
+            # Convert to lower case for case-insensitive search
+            if search_query in pilot.get('callsign', '').lower() or \
+               search_query in pilot.get('name', '').lower() or \
+               search_query in str(pilot.get('cid', '')).lower():
+                filtered_pilots.append(pilot)
+
+        return JsonResponse(filtered_pilots, safe=False)
+    except requests.RequestException as e:
+        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
 
 
 def airports_view(request):
@@ -310,3 +330,44 @@ def should_skip_waypoint(current, next_waypoint, previous=None, threshold=10):
     
     # Check if the waypoint is far from both the previous and next waypoints
     return distance_to_next > threshold and distance_from_previous > threshold
+
+from django.http import JsonResponse
+from .models import Airport
+
+def fetch_online_controllers():
+    url = "https://api.vatsim.net/v2/atc/online"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return []
+
+def search_vatsim(request):
+    controllers = fetch_online_controllers()
+    
+    seen_idents = set()
+    results = []
+
+    for controller in controllers:
+        search_ident = controller['callsign'].split("_")[0]
+        type = controller['callsign'].split("_")[-1]
+
+
+            # If ident is exactly 4 characters, match exactly the last three characters in the database
+        airports = Airport.objects.filter(ident__endswith=search_ident[-3:]).exclude(type__in=['small_airport', 'heliport', 'closed'])
+
+        for airport in airports:
+            if airport.ident not in seen_idents:
+                seen_idents.add(airport.ident)
+                data = {
+                    'ident': airport.ident,
+                    'latitude_deg': airport.latitude_deg,
+                    'longitude_deg': airport.longitude_deg,
+                    'type': type  # Assuming you want to maintain the type as per the controller's callsign
+                }
+                results.append(data)
+
+    if results:
+        return JsonResponse({'airports': results})
+    else:
+        return JsonResponse({'error': 'No matching airports found for online controllers'}, status=404)
