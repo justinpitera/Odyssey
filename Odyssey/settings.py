@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     'schedule',
     'api',
     'map',
+    'django_apscheduler',
 ]
 
 MIDDLEWARE = [
@@ -131,10 +132,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Celery Configuration
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
 
 GDAL_LIBRARY_PATH = '/opt/homebrew/opt/gdal/lib/libgdal.dylib'
 GEOS_LIBRARY_PATH = '/opt/homebrew/opt/geos/lib/libgeos_c.dylib'

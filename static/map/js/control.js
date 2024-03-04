@@ -1,12 +1,13 @@
 function fetchAndUpdateATCControllersDirectly() {
-    fetch('/map/search_vatsim')
+    fetch('/map/api/controllers/')
         .then(response => response.json())
         .then(data => {
-            const controllers = data.airports; // Assuming this is the structure
+            const controllers = data.controllers; // Adjust according to the JSON structure
             updateMapWithATCControllers(controllers);
         })
         .catch(err => console.error('Error fetching ATC controller data:', err));
 }
+
 
 function updateMapWithATCControllers(controllers) {
     // Filter controllers to include only those within the current viewport
@@ -19,7 +20,7 @@ function updateMapWithATCControllers(controllers) {
     const approachFeatures = [];
     const towerAndGroundFeatures = [];
 
-    visibleControllers.forEach(controller => {
+    controllers.forEach(controller => {
         const markerLngLat = [controller.longitude_deg, controller.latitude_deg];
         const feature = {
             type: 'Feature',
@@ -39,21 +40,22 @@ function updateMapWithATCControllers(controllers) {
         } else {
             towerAndGroundFeatures.push(feature);
         }
+            // update or add the GeoJSON source for ATC Approach
+        updateOrCreateSource('vatsim-atc-approach', approachFeatures);
+        // update or add the GeoJSON source for ATC Tower and Ground
+        updateOrCreateSource('vatsim-atc-tower-ground', towerAndGroundFeatures);
     });
 
-    // Update or add the GeoJSON source for ATC Approach
-    updateOrCreateSource('vatsim-atc-approach', approachFeatures);
-    // Update or add the GeoJSON source for ATC Tower and Ground
-    updateOrCreateSource('vatsim-atc-tower-ground', towerAndGroundFeatures);
 
-    // Function to update or create source and corresponding layer
     function updateOrCreateSource(sourceId, features) {
         if (map.getSource(sourceId)) {
+            // Update the existing source's data
             map.getSource(sourceId).setData({
                 type: 'FeatureCollection',
                 features: features
             });
         } else {
+            // Add new source
             map.addSource(sourceId, {
                 type: 'geojson',
                 data: {
@@ -61,44 +63,50 @@ function updateMapWithATCControllers(controllers) {
                     features: features
                 }
             });
+    
+            // Based on the sourceId, decide whether to add a circle or symbol layer
+            if (sourceId.includes('approach')) {
+                // Add circle layer for Approach if it doesn't exist
+                if (!map.getLayer(`${sourceId}-circle`)) {
+                    map.addLayer({
+                        id: `${sourceId}-circle`,
+                        type: 'circle',
+                        source: sourceId,
+                        paint: {
+                            'circle-color': '#00ff00',
+                            'circle-opacity': 0.5,
+                            'circle-radius': {
+                                'base': 30,
+                                'stops': [[12, 30], [22, 250]]
+                            }
+                        },
 
-            if (sourceId === 'vatsim-atc-approach') {
-                // Add circle layer for Approach
-                map.addLayer({
-                    id: `${sourceId}-circle`,
-                    type: 'circle',
-                    source: sourceId,
-                    paint: {
-                        'circle-color': '#00ff00',
-                        'circle-opacity': 0.5,
-                        'circle-radius': {
-                            'base': 30,
-                            'stops': [[12, 30], [22, 250]]
-                        }
-                    },
-                    minzoom: 4.5,
-                });
+                    });
+                }
             } else {
-                // Add symbol layer for Tower and Ground
-                map.addLayer({
-                    id: `${sourceId}-symbol`,
-                    type: 'symbol',
-                    source: sourceId,
-                    layout: {
-                        'text-field': ['get', 'type'],
-                        'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-                        'text-justify': 'auto',
-                        'text-size': 24
-                    },
-                    paint: {
-                        'text-color': ['match', ['get', 'type'], 'tower', '#ff0000', 'ground', '#008000', '#ffffff'],
-                    },
-                    minzoom: 3,
-                });
+                // Add symbol layer for Tower and Ground if it doesn't exist
+                if (!map.getLayer(`${sourceId}-symbol`)) {
+                    map.addLayer({
+                        id: `${sourceId}-symbol`,
+                        type: 'symbol',
+                        source: sourceId,
+                        layout: {
+                            'text-field': ['get', 'type'],
+                            'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
+                            'text-justify': 'auto',
+                            'text-size': 24
+                        },
+                        paint: {
+                            'text-color': ['match', ['get', 'type'], 'tower', '#ff0000', 'ground', '#008000', '#ffffff'],
+                        },
+
+                    });
+                }
             }
         }
     }
 }
+    
 
 function updateOrCreateSourceForATCType(type, feature) {
     const sourceId = `vatsim-atc-${type}`;
@@ -120,48 +128,50 @@ function updateOrCreateSourceForATCType(type, feature) {
 }
 
 function addLayerForType(type) {
-    switch(type) {
-        case 'approach':
-            // Add circle layer for approach
+    const sourceId = `vatsim-atc-${type}`;
+    const layerId = `${sourceId}-${type === 'approach' ? 'circle' : 'symbol'}`;
+
+    if (!map.getLayer(layerId)) {
+        if (type === 'approach') {
             map.addLayer({
-                id: `vatsim-atc-${type}-circle`,
+                id: layerId,
                 type: 'circle',
-                source: `vatsim-atc-${type}`,
+                source: sourceId,
                 paint: {
                     'circle-color': '#00ff00',
                     'circle-opacity': 0.5,
                     'circle-radius': {
-                        'base': 30,
-                        'stops': [[12, 30], [22, 250]]
+                        'base': 20, // Adjust base size for better visibility
+                        'stops': [[5, 10], [15, 40]] // Adjust stops for dynamic sizing
+                    }
+                }
+                // Removed minzoom property
+            });
+        } else {
+            // Adjust symbol layer for Tower and Ground
+            map.addLayer({
+                id: layerId,
+                type: 'symbol',
+                source: sourceId,
+                layout: {
+                    'text-field': '{type}', // Use direct type for text
+                    'text-size': {
+                        'base': 12, // Adjust text size for visibility
+                        'stops': [[5, 12], [15, 24]] // Adjust stops for dynamic sizing
                     }
                 },
-                minzoom: 4.5,
-            });
-            break;
-        case 'tower':
-        case 'ground':
-            // Add symbol layer for tower and ground with text as T or G
-            map.addLayer({
-                id: `vatsim-atc-${type}-symbol`,
-                type: 'symbol',
-                source: `vatsim-atc-${type}`,
-                layout: {
-                    'text-field': ['get', 'symbol'],
-                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-                    'text-size': 12
-                },
                 paint: {
-                    'text-color': ['get', 'color']
-                },
-                minzoom: 4.5,
+                    'text-color': '#ffffff', // Example text color, adjust as needed
+                }
+                // Removed minzoom property
             });
-            break;
+        }
     }
 }
 
-// Event listeners and initial fetch as before
-map.on('moveend', fetchAndUpdateATCControllersDirectly);
-map.on('zoomend', fetchAndUpdateATCControllersDirectly);
+
+
+map.on('moveend', fetchAndUpdateATCControllersDirectly());
 fetchAndUpdateATCControllersDirectly();
 setInterval(fetchAndUpdateATCControllersDirectly, 15000);
 

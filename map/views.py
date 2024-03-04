@@ -1,12 +1,17 @@
 import csv
 import os
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, render
-from map.models import Airport
+from django.shortcuts import get_object_or_404, redirect, render
+from map.forms import ControllerForm
+from map.models import Airport, Controller
 from schedule.models import Flight
 from django.conf import settings
-from itertools import islice
 from django.contrib.auth.decorators import login_required
+from django.db import IntegrityError
+from django.db.models import Q
+from django.views.decorators.http import require_http_methods
+import requests
+from django.views.decorators.csrf import csrf_exempt
 
 @login_required
 def aircraft_map(request):
@@ -34,7 +39,6 @@ def aircraft_data(request):
     # Query all active flights
     active_flights = Flight.objects.filter(is_active=True)
     
-    # Serialize the data for each active flight into a list of dictionaries
     flights_data = []
     for flight in active_flights:
         flight_data = {
@@ -43,7 +47,6 @@ def aircraft_data(request):
             'heading': flight.aircraft_heading,
             'altitude': flight.current_altitude,
             'ground_speed': flight.aircraft_ground_speed,
-            # Assuming 'username' is the concatenated first name and last name of the flight's user
             'username': flight.user.first_name + " " + flight.user.last_name if flight.user else "Unknown",
             'userId': flight.user.id if flight.user else None,
             'flight_number': flight.flight_number,
@@ -73,9 +76,7 @@ def waypoints_view(request):
 
     return JsonResponse({'waypoints': waypoints})
 
-from django.views.decorators.http import require_http_methods
 
-import requests
 
 @require_http_methods(["GET"])
 def fetch_vatsim_data(request):
@@ -205,7 +206,7 @@ def search_airports(request):
 
     return JsonResponse(results, safe=False)
 
-from django.views.decorators.csrf import csrf_exempt
+
 
 @csrf_exempt
 def import_airports_from_csv(request):
@@ -341,6 +342,58 @@ def fetch_online_controllers():
         return response.json()
     else:
         return []
+    
+
+
+
+# Ensure this map is defined in your code
+DIVISION_TO_REGION_MAP = {
+    "PAC": ["Y", "A", "N", "F"],
+    "JPN": ["R"],
+    "KOR": ["R"],
+    "NZ": ["N", "Z"],
+    "PRC": ["Z"],
+    "ROC": ["R"],
+    "SEA": ["V", "W"],
+    "WA": ["O"],
+    "EUD": ["E", "L", "U"],
+    "USA": ["K", "P"],
+    "IL": ["L"],
+    "MENA": ["O", "H"],
+    "RUS": ["U", "E"],
+    "SSA": ["F", "H"],
+    "UK": ["E"],
+    "BRZ": ["S"],
+    "CAN": ["C"],
+    "CAR": ["T"],
+    "CA": ["M"],
+    "MEX": ["M"],
+    "SUR": ["S"],
+    "CAM": ["M"],
+}
+
+def fetch_controller_division(request, id):
+    try:
+        # Make an API request to the VATSIM API
+        response = requests.get(f'https://api.vatsim.net/api/ratings/{id}')
+        response.raise_for_status()  # Raise an error for bad responses
+        
+        # Extract the division from the response data
+        data = response.json()
+        division = data.get('division', None)
+        
+        if division is None:
+            return HttpResponse('Division not found', status=404)
+        
+        # Look up the ICAO codes for the division
+        icao_codes = DIVISION_TO_REGION_MAP.get(division, ['-1'])
+        
+        # Return the ICAO codes as a string in the HttpResponse
+        return HttpResponse(','.join(icao_codes))
+    except requests.RequestException as e:
+        # Handle any errors that occur during the API request
+        return HttpResponse(f'Error retrieving data: {str(e)}', status=500)
+
 
 def search_vatsim(request):
     controllers = fetch_online_controllers()
@@ -371,3 +424,77 @@ def search_vatsim(request):
         return JsonResponse({'airports': results})
     else:
         return JsonResponse({'error': 'No matching airports found for online controllers'}, status=404)
+
+def update_vatsim_controllers(request):
+    controllers = fetch_online_controllers()
+
+    results = []
+    updated_controllers = 0
+    total_controllers = len(controllers)  # Get the total number of controllers
+
+    for index, controller in enumerate(controllers, start=1):
+        print(f"Processing data for controller {index} of {total_controllers}: {controller['id']}")
+        search_ident = controller['callsign'].split("_")[0]
+        controller_type = controller['callsign'].split("_")[-1]
+        division = fetch_controller_division(request, controller['id']).content.decode('utf-8')
+        vatsim_id = controller['id']
+
+        backendName = f'{search_ident}_{controller_type}'
+        
+        # Find or create the associated airport
+        division_tuple = tuple(division.replace(",", ""))  # Remove spaces and commas, then convert to tuple
+        airports = Airport.objects.filter(ident__endswith=search_ident[-3:]).exclude(type__in=['closed', 'heliport'])
+
+        query = Q()
+        for letter in division_tuple:
+            query |= Q(ident__startswith=letter)
+        print(division_tuple)
+
+        airport = airports.filter(query).first()
+        if airport is None:
+            print(f"No matching airport found for controller {vatsim_id} @ {backendName} with division {division}")
+            continue
+
+        # Check if the controller exists
+        existing_controller = Controller.objects.filter(name=backendName).first()
+        if existing_controller:
+            # If the controller exists, update without changing latitude and longitude
+            existing_controller.vatsim_id = vatsim_id
+            existing_controller.frequency = controller.get('frequency', 0)  # Temporary placeholder for frequency
+            existing_controller.type = controller_type
+            existing_controller.division = division
+            existing_controller.save()
+            print(f"Updated {backendName} with VATSIM ID: {vatsim_id}")
+        else:
+            # If the controller does not exist, create a new one
+            Controller.objects.create(
+                name=backendName,
+                vatsim_id=vatsim_id,
+                ident=search_ident,
+                latitude_deg=airport.latitude_deg,
+                longitude_deg=airport.longitude_deg,
+                frequency=controller.get('frequency', 0),  # Temporary placeholder for frequency
+                type=controller_type,
+                division=division,
+                airport=airport,
+            )
+            print(f"Created {backendName} with VATSIM ID: {vatsim_id}")
+        updated_controllers += 1
+
+    return JsonResponse({'message': f'{updated_controllers} controllers processed.'})
+def controllers_data(request):
+    controllers = Controller.objects.all().values(
+        'ident', 'latitude_deg', 'longitude_deg', 'type', 'division', 'vatsim_id', 'airport_id'
+    )
+    return JsonResponse({'controllers': list(controllers)})
+
+def add_controller(request):
+    if request.method == 'POST':
+        form = ControllerForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('map')  # Redirect to a new URL
+    else:
+        form = ControllerForm()  # An unbound form
+
+    return render(request, 'map/add_controller.html', {'form': form})

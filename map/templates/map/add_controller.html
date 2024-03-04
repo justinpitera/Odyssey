@@ -1,0 +1,15 @@
+<!-- your_template_name.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Controller</title>
+</head>
+<body>
+    <h2>Add Controller</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save</button>
+    </form>
+</body>
+</html>
