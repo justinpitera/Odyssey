@@ -349,6 +349,7 @@ def fetch_online_controllers():
 # Ensure this map is defined in your code
 DIVISION_TO_REGION_MAP = {
     "PAC": ["Y", "A", "N", "F"],
+    "GBR": ["E"],
     "JPN": ["R"],
     "KOR": ["R"],
     "NZ": ["N", "Z"],
@@ -432,6 +433,21 @@ def update_vatsim_controllers(request):
     updated_controllers = 0
     total_controllers = len(controllers)  # Get the total number of controllers
 
+    online_count = 0
+    database_controllers = Controller.objects.all()
+    for index, controller in enumerate(database_controllers, start=1):
+        print(f"Fetching request to see if {controller.vatsim_id} @ {controller.ident} is online. {index} of {len(database_controllers)}")
+        if is_online(request, controller.vatsim_id):
+            print(f"Controller {controller.vatsim_id} @ {controller.ident} is still online.")
+            controller.is_online = True
+            online_count += 1
+            controller.save()
+        else:
+            print(f"Controller {controller.vatsim_id} @ {controller.ident} is now offline.")
+            controller.is_online = False
+            controller.save()
+
+    print("Request complete: ", online_count, " controllers reported online.")
     for index, controller in enumerate(controllers, start=1):
         print(f"Processing data for controller {index} of {total_controllers}: {controller['id']}")
         search_ident = controller['callsign'].split("_")[0]
@@ -463,6 +479,7 @@ def update_vatsim_controllers(request):
             existing_controller.frequency = controller.get('frequency', 0)  # Temporary placeholder for frequency
             existing_controller.type = controller_type
             existing_controller.division = division
+            existing_controller.is_online = True
             existing_controller.save()
             print(f"Updated {backendName} with VATSIM ID: {vatsim_id}")
         else:
@@ -476,6 +493,7 @@ def update_vatsim_controllers(request):
                 frequency=controller.get('frequency', 0),  # Temporary placeholder for frequency
                 type=controller_type,
                 division=division,
+                is_online=True,
                 airport=airport,
             )
             print(f"Created {backendName} with VATSIM ID: {vatsim_id}")
@@ -485,7 +503,7 @@ def update_vatsim_controllers(request):
 def controllers_data(request):
     controllers = Controller.objects.all().values(
         'ident', 'latitude_deg', 'longitude_deg', 'type', 'division', 'vatsim_id', 'airport_id'
-    )
+    ).exclude(is_online=False)
     return JsonResponse({'controllers': list(controllers)})
 
 def add_controller(request):
@@ -498,3 +516,19 @@ def add_controller(request):
         form = ControllerForm()  # An unbound form
 
     return render(request, 'map/add_controller.html', {'form': form})
+
+
+def is_online(request, vatsim_id):
+    try:
+        response = requests.get('https://api.vatsim.net/v2/atc/online')
+        if response.status_code == 200:
+            controllers = response.json()
+            for controller in controllers:
+                if controller['id'] == vatsim_id:
+                    return True
+            # If the loop completes without finding the ID, they are offline
+            return False
+        else:
+            return JsonResponse({'error': 'Failed to fetch data from VATSIM'}, status=500)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

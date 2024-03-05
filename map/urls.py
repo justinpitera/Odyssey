@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import aircraft_data, aircraft_map, waypoints_view, waypoint_coordinates, airports_view, search_airports, import_airports_from_csv, fetch_vatsim_data, fetch_controller_division, search_vatsim, update_vatsim_controllers, controllers_data, add_controller
+from .views import aircraft_data, aircraft_map, waypoints_view, waypoint_coordinates, airports_view, search_airports, import_airports_from_csv, fetch_vatsim_data, fetch_controller_division, search_vatsim, update_vatsim_controllers, controllers_data, add_controller, is_online
 
 urlpatterns = [
     path('', aircraft_map, name='map'),
@@ -15,4 +15,5 @@ urlpatterns = [
     path('update_vatsim_controllers', update_vatsim_controllers, name='update_vatsim_controllers'),
     path('api/controllers/', controllers_data, name='controllers_data'),
     path('add_controller/', add_controller, name='add-controller'),
+    path('is_online/<int:vatsim_id>', is_online, name='is_online'),
 ]
