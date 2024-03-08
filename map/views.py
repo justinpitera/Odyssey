@@ -371,6 +371,7 @@ DIVISION_TO_REGION_MAP = {
     "MEX": ["M"],
     "SUR": ["S"],
     "CAM": ["M"],
+    "SAM": ["S"],
 }
 
 def fetch_controller_division(request, id):
