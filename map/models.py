@@ -55,3 +55,15 @@ class Waypoint(models.Model):
     def __str__(self):
         return f"{self.name} ({self.ident})"
 
+class VATSIMFlight(models.Model):
+    vatsim_id = models.IntegerField()
+    callsign = models.CharField(max_length=10)
+    departure = models.CharField(max_length=4)
+    arrival = models.CharField(max_length=4)
+    aircraft = models.CharField(max_length=255)
+    cruise_speed = models.IntegerField()
+    altitude = models.IntegerField()
+    route = models.TextField()
+    
+    def __str__(self):
+        return f"{self.callsign} ({self.vatsim_id})"

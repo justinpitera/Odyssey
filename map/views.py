@@ -13,7 +13,10 @@ from django.views.decorators.http import require_http_methods
 import requests
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
-
+import asyncio
+import aiohttp
+from django.forms.models import model_to_dict
+from asgiref.sync import sync_to_async
 @login_required
 def aircraft_map(request):
     try:
@@ -185,6 +188,43 @@ def airports_view(request):
 
 
 
+def airport_details(request, airport_ident):
+    arrivals_queryset = VATSIMFlight.objects.filter(arrival=airport_ident)
+    departures_queryset = VATSIMFlight.objects.filter(departure=airport_ident)
+
+    # Manually construct the list of dictionaries for serialization
+    arrivals = [{
+        'vatsim_id': flight.vatsim_id,
+        'callsign': flight.callsign,
+        'departure': flight.departure,
+        'arrival': flight.arrival,
+        'aircraft': flight.aircraft,
+        'cruise_speed': flight.cruise_speed,
+        'altitude': flight.altitude,
+        'route': flight.route,
+    } for flight in arrivals_queryset]
+
+    departures = [{
+        'vatsim_id': flight.vatsim_id,
+        'callsign': flight.callsign,
+        'departure': flight.departure,
+        'arrival': flight.arrival,
+        'aircraft': flight.aircraft,
+        'cruise_speed': flight.cruise_speed,
+        'altitude': flight.altitude,
+        'route': flight.route,
+    } for flight in departures_queryset]
+
+    return JsonResponse({
+        'arrivals': arrivals,
+        'departures': departures,
+    })
+
+
+
+
+
+
 
 def search_airports(request):
     query = request.GET.get('query', '').lower()
@@ -338,7 +378,7 @@ def should_skip_waypoint(current, next_waypoint, previous=None, threshold=10):
     return distance_to_next > threshold and distance_from_previous > threshold
 
 from django.http import JsonResponse
-from .models import Airport, Waypoint
+from .models import Airport, VATSIMFlight, Waypoint
 
 def fetch_online_controllers():
     url = "https://api.vatsim.net/v2/atc/online"
@@ -652,3 +692,53 @@ def import_waypoints_data(request):
 
             print(f"Processed {index} of {length} waypoints")
     return HttpResponse("Waypoints imported successfully, duplicates skipped.", status=200)
+
+async def fetch_flight_plan(session, vatsim_id, index, count_members):
+    print(f"Fetching flight plan for {vatsim_id}. {index} of {count_members}")
+    flight_plan_url = f'https://api.vatsim.net/v2/members/{vatsim_id}/flightplans'
+    try:
+        async with session.get(flight_plan_url) as response:
+            if 'application/json' in response.headers.get('Content-Type', ''):
+                flight_plans = await response.json()
+                if flight_plans:
+                    return flight_plans[0]
+            else:
+                print(f"Non-JSON response for VATSIM ID {vatsim_id}: {response.status}, {response.headers.get('Content-Type')}")
+    except aiohttp.ContentTypeError as e:
+        print(f"JSON decode error for VATSIM ID {vatsim_id}: {e}")
+    return None
+
+async def save_flight_plan_to_db(plan):
+    await sync_to_async(VATSIMFlight.objects.update_or_create, thread_sensitive=True)(
+        vatsim_id=plan['vatsim_id'],
+        defaults={
+            'callsign': plan['callsign'],
+            'departure': plan['dep'],
+            'arrival': plan['arr'],
+            'aircraft': plan['aircraft'],
+            'cruise_speed': int(plan['cruisespeed']) if 'cruisespeed' in plan and plan['cruisespeed'].isdigit() else 0,
+            'altitude': int(plan['altitude']) if 'altitude' in plan and plan['altitude'].isdigit() else 0,
+            'route': plan['route'],
+        }
+    )
+
+async def fetch_and_save_inbound_flights():
+    online_members_url = 'https://api.vatsim.net/v2/members/online'
+    async with aiohttp.ClientSession() as session:
+        async with session.get(online_members_url) as response:
+            if response.status == 200:
+                online_members = await response.json()
+
+                count_members = len(online_members)
+                tasks = [fetch_flight_plan(session, member['id'], index + 1, count_members) for index, member in enumerate(online_members)]
+
+                flight_plans = await asyncio.gather(*tasks)
+
+                for plan in flight_plans:
+                    if plan:
+                        await save_flight_plan_to_db(plan)
+                print("Flight plans updated in the database.")
+
+def inbound_flights(request):
+    asyncio.run(fetch_and_save_inbound_flights())
+    return JsonResponse({'status': 'Flight plans updated in the database.'})

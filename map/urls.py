@@ -16,6 +16,8 @@ from .views import (
     is_online,
     construct_route,
     import_waypoints_data,
+    inbound_flights,
+    airport_details,
 )
 
 urlpatterns = [
@@ -35,5 +37,6 @@ urlpatterns = [
     path('api/is_online/<int:vatsim_id>', is_online, name='is_online'),
     path('api/construct_route/<int:vatsim_id>', construct_route, name='construct_route'),
     path('api/important_waypoints_data', import_waypoints_data, name='import_waypoints_data'),
-
+    path('api/inbound_flights/', inbound_flights, name='inbound_flights'),
+    path('api/airport_details/<str:airport_ident>/', airport_details, name='airport-details'),
 ]
