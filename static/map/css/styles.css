@@ -156,6 +156,10 @@ body, html {
     z-index: 1000;
     transition: top 0.5s;
 }
+
+#search-bar input:focus {
+    outline: none;
+}
 #search-bar.visible {
     top: 75px; /* Slide down to show */
 }

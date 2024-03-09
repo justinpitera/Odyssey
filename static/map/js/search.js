@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (searchValue.length > 2) { // Optional: start searching after 2 characters
             Promise.all([
-                fetch(`/map/search-airports/?query=${encodeURIComponent(searchValue)}`) // Original search endpoint
+                fetch(`/map/api/search-airports/?query=${encodeURIComponent(searchValue)}`) // Original search endpoint
                     .then(response => response.json()),
-                fetch(`/map/vatsim-data/`) // Your VATSIM data endpoint
+                fetch(`/map/api/vatsim-data/`) // Your VATSIM data endpoint
                     .then(response => response.json())
             ]).then(([originalResults, vatsimData]) => {
                 const vatsimResults = vatsimData.filter(pilot => pilot.name.includes(searchValue) || pilot.callsign.includes(searchValue) || pilot.cid.toString().includes(searchValue));
@@ -49,26 +49,31 @@ document.addEventListener('DOMContentLoaded', function() {
             results.forEach(result => {
                 const div = document.createElement('div');
                 // Determine the icon based on the result type
-                const iconClass = result.type === 'airport' ? 'fa-tower' : (result.type === 'vatsim' ? 'fa-plane' : 'fa-helipad'); // Adjust these class names based on actual results
+                const iconClass = result.type === 'airport' ? 'fa-tower' : (result.type === 'vatsim' ? 'fa-plane' : 'fa-helipad');
                 // Create an icon element
                 const icon = document.createElement('i');
-                icon.className = `fas ${iconClass}`; // Ensure you have the correct Font Awesome prefix and icon classes
+                icon.className = `fas ${iconClass}`;
                 icon.style.marginRight = '8px'; // Add some spacing between the icon and text
-    
-                // Combine icon and text in a div
+        
+                // Modify textContent to exclude ident for type 'vatsim'
+                const textContent = result.type === 'vatsim' 
+                    ? `${result.name} (VATSIM)` // Exclude ident for vatsim type
+                    : `${result.ident} - ${result.name}`; // Include ident for other types
+        
+                const textNode = document.createTextNode(textContent);
+        
                 div.appendChild(icon);
-                const textNode = document.createTextNode(`${result.name} ${result.type === 'vatsim' ? '(VATSIM)' : ''}`);
                 div.appendChild(textNode);
-    
+        
                 div.style.padding = '10px';
                 div.style.borderBottom = '1px solid #eee';
                 div.style.cursor = 'pointer';
                 div.onclick = function() {
-                    searchInput.value = result.name;  // Fill the search input with the selected result
-                    resultsDiv.style.display = 'none';  // Hide the results div
+                    searchInput.value = result.name; // Use name for selection
+                    resultsDiv.style.display = 'none';
                     if (result.lat && result.lon) {
                         console.log(result.lat, result.lon);
-                        zoomToLocation(result.lat, result.lon);  // Zoom to the selected location
+                        zoomToLocation(result.lat, result.lon);
                     }
                 };
                 resultsDiv.appendChild(div);

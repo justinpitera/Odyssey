@@ -46,3 +46,12 @@ class Controller(models.Model):
     def save(self, *args, **kwargs):
         self.name = '{}_{}'.format(self.ident, self.type)
         super(Controller, self).save(*args, **kwargs)
+
+class Waypoint(models.Model):
+    ident = models.CharField(max_length=10)
+    latitude_deg = models.FloatField()
+    longitude_deg = models.FloatField()
+
+    def __str__(self):
+        return f"{self.name} ({self.ident})"
+

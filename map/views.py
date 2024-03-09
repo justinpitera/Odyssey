@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.views.decorators.http import require_http_methods
 import requests
 from django.views.decorators.csrf import csrf_exempt
+import pandas as pd
 
 @login_required
 def aircraft_map(request):
@@ -23,7 +24,7 @@ def aircraft_map(request):
         context = {
             'aircraft': aircraft,
             'userAircraft': userAircraft,
-            'page_title': 'Map - Odyssey',
+            'page_title': 'Odyssey Network',
             'userLat': userLat,
             'userLon': userLon
         }
@@ -31,7 +32,7 @@ def aircraft_map(request):
         aircraft = Flight.objects.filter(is_active=True)
         context = {
             'aircraft': aircraft,
-            'page_title': 'Map - Odyssey',
+            'page_title': 'Odyssey Network',
         }
     return render(request, 'map/map.html', context)
 
@@ -193,8 +194,8 @@ def search_airports(request):
         reader = csv.reader(csvfile)
         next(reader, None)  # Skip the header row
         for row in reader:
-            if query in row[3].lower() or query in row[1].lower():  # Assuming row[3] contains the airport name
-                results.append({
+            if query in row[3].lower() or query in row[1].lower():
+                result = {
                     'ident': row[1],
                     'name': row[3],
                     'type': row[2],
@@ -202,10 +203,14 @@ def search_airports(request):
                     'municipality': row[10],
                     'lat': f"{row[5]}",
                     'lon': f"{row[4]}"
-                })
+                }
+                # Prepend if ident matches exactly, else append
+                if query == row[1].lower():
+                    results.insert(0, result)  # This puts it at the beginning of the list
+                else:
+                    results.append(result)
 
     return JsonResponse(results, safe=False)
-
 
 
 @csrf_exempt
@@ -333,7 +338,7 @@ def should_skip_waypoint(current, next_waypoint, previous=None, threshold=10):
     return distance_to_next > threshold and distance_from_previous > threshold
 
 from django.http import JsonResponse
-from .models import Airport
+from .models import Airport, Waypoint
 
 def fetch_online_controllers():
     url = "https://api.vatsim.net/v2/atc/online"
@@ -533,3 +538,117 @@ def is_online(request, vatsim_id):
             return JsonResponse({'error': 'Failed to fetch data from VATSIM'}, status=500)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
+
+from django.http import JsonResponse
+from .models import Waypoint
+import requests
+
+def fetch_flightplan_from_vatsim(vatsim_id):
+    """Fetches the flight plan for a given VATSIM ID from the VATSIM API."""
+    url = f"https://api.vatsim.net/v2/members/{vatsim_id}/flightplans"
+    response = requests.get(url)
+    if response.status_code == 200:
+        flightplans = response.json()
+        if flightplans:
+            return flightplans[0]  
+    return None
+
+def extract_waypoints_from_route(route):
+    """Extracts waypoint identifiers from a flight plan route string."""
+    return route.split() 
+
+def match_waypoints_in_db(waypoints):
+    """Fetches waypoints from the database and returns them in the order they appear in the waypoints list."""
+    waypoints_queryset = Waypoint.objects.filter(ident__in=waypoints)
+    # Create a dictionary of waypoints for fast lookup
+    waypoint_dict = {wp.ident: wp for wp in waypoints_queryset}
+    # Reorder waypoints based on the input list order
+    ordered_waypoints = [waypoint_dict[ident] for ident in waypoints if ident in waypoint_dict]
+    return ordered_waypoints
+
+def construct_route(request, vatsim_id):
+    """Constructs a route from VATSIM flight plan's waypoints, including departure and arrival airports."""
+    flight_plan = fetch_flightplan_from_vatsim(vatsim_id)
+    if not flight_plan:
+        return JsonResponse({'error': 'Flight plan not found'}, status=404)
+
+    # Extract route and airport identifiers
+    dep_ident = flight_plan.get('dep', '')
+    arr_ident = flight_plan.get('arr', '')
+    route = flight_plan.get('route', '')
+
+    # Find airports in the database
+    try:
+        departure_airport = Airport.objects.get(ident=dep_ident)
+        arrival_airport = Airport.objects.get(ident=arr_ident)
+    except Airport.DoesNotExist:
+        return JsonResponse({'error': 'Airport not found'}, status=404)
+
+    waypoint_identifiers = extract_waypoints_from_route(route)
+    ordered_waypoints = match_waypoints_in_db(waypoint_identifiers)
+
+    distance_threshold = 1000
+
+    # Initialize the list of waypoints data, starting with the departure airport
+    waypoints_data = [{
+        'ident': departure_airport.ident,
+        'latitude_deg': departure_airport.latitude_deg,
+        'longitude_deg': departure_airport.longitude_deg
+    }]
+
+    # Iterate over the waypoints, skipping those too far away from the previous one
+    for i in range(len(ordered_waypoints)):
+        prev_wp = waypoints_data[-1] if waypoints_data else departure_airport
+        curr_wp = ordered_waypoints[i]
+        distance = haversine(prev_wp['latitude_deg'], prev_wp['longitude_deg'], curr_wp.latitude_deg, curr_wp.longitude_deg)
+
+        if distance <= distance_threshold:
+            waypoints_data.append({
+                'ident': curr_wp.ident,
+                'latitude_deg': curr_wp.latitude_deg,
+                'longitude_deg': curr_wp.longitude_deg
+            })
+
+    # Add the arrival airport to the end of the waypoints data
+    waypoints_data.append({
+        'ident': arrival_airport.ident,
+        'latitude_deg': arrival_airport.latitude_deg,
+        'longitude_deg': arrival_airport.longitude_deg
+    })
+
+    return JsonResponse({'waypoints': waypoints_data})
+
+
+
+
+def import_waypoints_data(request):
+    # Hardcoded path to your CSV file
+    csv_file_path = 'staticfiles/data/waypoint_data.csv'
+    
+    results = pd.read_csv(csv_file_path)
+    length = len(results)
+
+
+    with open(csv_file_path, newline='') as csv_file:
+        reader = csv.reader(csv_file)
+        next(reader, None)  # Skip the header row if your CSV has one
+        for index, row in enumerate(reader, start=1):
+            ident, latitude_deg, longitude_deg = row  # Adjust according to your CSV structure
+            
+            # Attempt to find a Waypoint with the same ident, latitude_deg, and longitude_deg
+            waypoint_exists = Waypoint.objects.filter(
+                ident=ident,
+                latitude_deg=float(latitude_deg),
+                longitude_deg=float(longitude_deg)
+            ).exists()
+
+            # If the waypoint does not exist, create it
+            if not waypoint_exists:
+                Waypoint.objects.create(
+                    ident=ident,
+                    latitude_deg=float(latitude_deg),
+                    longitude_deg=float(longitude_deg)
+                )
+
+            print(f"Processed {index} of {length} waypoints")
+    return HttpResponse("Waypoints imported successfully, duplicates skipped.", status=200)
