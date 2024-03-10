@@ -18,6 +18,7 @@ from .views import (
     import_waypoints_data,
     inbound_flights,
     airport_details,
+    aircraft_card,
 )
 
 urlpatterns = [
@@ -39,4 +40,5 @@ urlpatterns = [
     path('api/important_waypoints_data', import_waypoints_data, name='import_waypoints_data'),
     path('api/inbound_flights/', inbound_flights, name='inbound_flights'),
     path('api/airport_details/<str:airport_ident>/', airport_details, name='airport-details'),
+    path('aircraft_card', aircraft_card, name='aircraft-card'),
 ]

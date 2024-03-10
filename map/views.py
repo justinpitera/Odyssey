@@ -17,6 +17,11 @@ import asyncio
 import aiohttp
 from django.forms.models import model_to_dict
 from asgiref.sync import sync_to_async
+
+@login_required
+def aircraft_card(request):
+    return render(request, 'map/airport.html')
+
 @login_required
 def aircraft_map(request):
     try:
@@ -192,6 +197,7 @@ def airport_details(request, airport_ident):
     arrivals_queryset = VATSIMFlight.objects.filter(arrival=airport_ident)
     departures_queryset = VATSIMFlight.objects.filter(departure=airport_ident)
 
+    airportName = Airport.objects.get(ident=airport_ident).name
     # Manually construct the list of dictionaries for serialization
     arrivals = [{
         'vatsim_id': flight.vatsim_id,
@@ -218,6 +224,7 @@ def airport_details(request, airport_ident):
     return JsonResponse({
         'arrivals': arrivals,
         'departures': departures,
+        'airportName': airportName
     })
 
 
