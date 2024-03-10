@@ -217,3 +217,16 @@ body, html {
     max-height: 90vh; /* Max height to prevent overflow */
     overflow: auto; /* Add scrollbars if content overflows */
 }
+#airport-card {
+    display: none; 
+    position: absolute; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+    max-width: 600px; /* Maximum width for larger screens */
+    width: 90%; /* Default width for larger screens */
+    height: auto; /* Adjust height as necessary */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}

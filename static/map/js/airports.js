@@ -127,7 +127,7 @@ function fetchAirportDetails(airportIdent) {
         // Initialize airport details content
         var detailsContent = `
             <div class="p-4 details-container" style="color: black;">
-                <p><strong><i class="fa-solid fa-input-text"></i></strong> ${data.airportName}</p>
+                <p><strong><i class="fa-solid fa-signature"></i></strong> ${data.airportName}</p>
                 <hr>
                 <p><strong><i class="fa-solid fa-passport"></i></strong> ${data.airportIdent}</p>
                 <hr>
