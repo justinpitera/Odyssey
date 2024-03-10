@@ -1,7 +1,10 @@
 import csv
+from datetime import datetime
 import os
+from xml.etree import ElementTree
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+import pytz
 from map.forms import ControllerForm
 from map.models import Airport, Controller
 from schedule.models import Flight
@@ -194,10 +197,15 @@ def airports_view(request):
 
 
 def airport_details(request, airport_ident):
+
     arrivals_queryset = VATSIMFlight.objects.filter(arrival=airport_ident)
     departures_queryset = VATSIMFlight.objects.filter(departure=airport_ident)
 
     airportName = Airport.objects.get(ident=airport_ident).name
+    airportIdent = Airport.objects.get(ident=airport_ident).ident
+    airportRegion = Airport.objects.get(ident=airport_ident).iso_region
+    airportLocalTime = get_local_time_from_ident(request,airport_ident)
+    
     # Manually construct the list of dictionaries for serialization
     arrivals = [{
         'vatsim_id': flight.vatsim_id,
@@ -224,8 +232,42 @@ def airport_details(request, airport_ident):
     return JsonResponse({
         'arrivals': arrivals,
         'departures': departures,
-        'airportName': airportName
+        'airportName': airportName,
+        'airportIdent': airportIdent,
+        'airportRegion': airportRegion,
+        'airportLocalTime': airportLocalTime,
     })
+
+
+
+def get_local_time_from_ident(request, airport_ident):
+    api_key = '3Y64ZEBNNLVR'
+    base_url = 'https://api.timezonedb.com/v2.1/get-time-zone'
+    latitude = Airport.objects.get(ident=airport_ident).latitude_deg
+    longitude = Airport.objects.get(ident=airport_ident).longitude_deg
+    # Parameters for the API request
+    params = {
+        'key': api_key,
+        'format': 'xml',
+        'by': 'position',
+        'lat': latitude,
+        'lng': longitude
+    }
+
+    try:
+        response = requests.get(base_url, params=params)
+        response.raise_for_status()  # Raises an HTTPError if the response code was unsuccessful
+        xml_root = ElementTree.fromstring(response.content)
+        
+        # Extracting the <formatted> element
+        formatted_time = xml_root.find('formatted').text
+        # Parse the time string and format it without seconds
+        time_without_seconds = datetime.strptime(formatted_time, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H:%M')
+        return time_without_seconds
+    except requests.RequestException as e:
+        return f"Error fetching time: {e}"
+    except ElementTree.ParseError:
+        return "Error parsing the XML response."
 
 
 

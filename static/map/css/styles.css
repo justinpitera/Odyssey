@@ -164,6 +164,15 @@ body, html {
     top: 75px; /* Slide down to show */
 }
 
+
+#loading-screen {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: rgb(17,24,39) ;
+    z-index: 9999;
+}
+
 .card-header {
     background-color: #f0f0f0; /* Light gray background */
     padding: 10px;
@@ -173,10 +182,38 @@ body, html {
 .card-header:active {
     cursor: grabbing;
 }
-#loading-screen {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    background: rgb(17,24,39) ;
-    z-index: 9999;
+
+
+
+
+
+.details-container {
+    padding: 20px;
+    background-color: #f5f5f5; /* Light grey, adjust according to your theme */
+    border-radius: 8px; /* Optional: adds rounded corners */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Optional: adds subtle shadow */
+    color: #333; /* Dark grey for text */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Adjusted gap for balanced spacing */
+}
+
+.details-container p {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.details-container p i {
+    margin-right: 10px; /* Adjust the space between the icon and the text */
+}
+
+.card {
+    position: fixed; /* Or absolute, depending on the use case */
+    top: 50%; /* Center vertically */
+    left: 50%; /* Center horizontally */
+    transform: translate(-50%, -50%); /* Adjust for exact centering */
+    max-width: 90vw; /* Max width to prevent overflow */
+    max-height: 90vh; /* Max height to prevent overflow */
+    overflow: auto; /* Add scrollbars if content overflows */
 }

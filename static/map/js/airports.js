@@ -54,72 +54,125 @@ function fetchAirportDetails(airportIdent) {
     fetch(url)
     .then(response => response.json())
     .then(data => {
-        document.querySelector(".max-w-md .text-2xl").textContent = data.airportName;
+        // Set the airport name
+        document.querySelector(".max-w-2xl .text-2xl").textContent = data.airportName;
 
-        // Initialize arrivals and departures content with a surrounding div that has a fixed height and overflow-auto
-        var arrivalsContent = '<div class="max-h-96 overflow-auto">';
-        data.arrivals.forEach((arrival, index) => {
-            arrivalsContent += `
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <ul>
-                    <li>
-                        <a href="#" class="block hover:bg-gray-50" onclick="toggleDropdown('arrival-${index}')">
-                            <div class="px-4 py-4 sm:px-6">
+        // Initialize arrivals content with a surrounding div that has a fixed height and overflow-auto
+        var arrivalsContent = '<div class="max-h-96 overflow-auto space-y-4">'; // Added space-y-4 for spacing between cards
+        if (data.arrivals.length === 0) {
+            
+            arrivalsContent += '<div class="p-4 details-container" style="color: black;"><p>No arrivals available...</p></div>';
+            
+        } else {
+            data.arrivals.forEach((arrival, index) => {
+                arrivalsContent += `
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg"> <!-- Changed rounded-md to rounded-lg and removed sm: -->
+                    <ul class="divide-y divide-gray-200"> <!-- Added divide-y and divide-gray-200 for separation -->
+                        <li class="p-4 hover:bg-gray-50"> <!-- Added padding here and hover effect directly -->
+                            <div onclick="toggleDropdown('arrival-${index}')" class="cursor-pointer">
                                 <div class="flex items-center justify-between">
                                     <p class="text-sm font-medium text-indigo-600 truncate">${arrival.callsign} - ${arrival.departure} -> ${arrival.arrival}</p>
                                     <div class="ml-2 flex-shrink-0 flex">
                                         <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Details</p>
                                     </div>
                                 </div>
-                            </div>
-                        </a>
-                        <div id="arrival-${index}" class="hidden px-4 py-4 sm:px-6">
-                            <p>Callsign: ${arrival.callsign}</p>
-                            <p>Aircraft: ${arrival.aircraft}</p>
-                            <p>Altitude: ${arrival.altitude} ft</p>
-                            <p>Cruise Speed: ${arrival.cruise_speed} knots</p>
-                            <p>Route: ${arrival.route}</p>
-                        </div>
-                    </li>
-                </ul>
-            </div>`;
-        });
-        arrivalsContent += '</div>'; // Close the div that sets the fixed height and overflow
-
-        var departuresContent = '<div class="max-h-96 overflow-auto">';
-        data.departures.forEach((departure, index) => {
-            departuresContent += `
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <ul>
-                    <li>
-                        <a href="#" class="block hover:bg-gray-50" onclick="toggleDropdown('departure-${index}')">
-                        <div class="px-4 py-4 sm:px-6">
-                            <div class="flex items-center justify-between">
-                                <p class="text-sm font-medium text-indigo-600 truncate">${departure.callsign} - ${departure.departure} -> ${departure.arrival}</p>
-                                <div class="ml-2 flex-shrink-0 flex">
-                                    <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Details</p>
+                                <div id="arrival-${index}" class="hidden mt-4">
+                                    <p>Callsign: ${arrival.callsign}</p>
+                                    <p>Aircraft: ${arrival.aircraft}</p>
+                                    <p>Altitude: ${arrival.altitude} ft</p>
+                                    <p>Cruise Speed: ${arrival.cruise_speed} knots</p>
+                                    <p>Route: ${arrival.route}</p>
                                 </div>
                             </div>
-                        </div>
-                    </a>
-                    <div id="departure-${index}" class="hidden px-4 py-4 sm:px-6">
-                        <p>Callsign: ${departure.callsign}</p>
-                        <p>Aircraft: ${departure.aircraft}</p>
-                        <p>Altitude: ${departure.altitude} ft</p>
-                        <p>Cruise Speed: ${departure.cruise_speed} knots</p>
-                        <p>Route: ${departure.route}</p>
-                    </div>
-                    </li>
-                </ul>
-            </div>`;
-        });
+                        </li>
+                    </ul>
+                </div>`;
+            });
+        }
+        arrivalsContent += '</div>'; // Close the div that sets the fixed height and overflow
+
+        // Initialize departures content with similar changes as arrivals
+        var departuresContent = '<div class="max-h-96 overflow-auto space-y-4">';
+        if (data.departures.length === 0) {
+            departuresContent += '<div class="p-4 details-container" style="color: black;"><p>No departures available...</p></div>';
+        } else {
+            data.departures.forEach((departure, index) => {
+                departuresContent += `
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <ul class="divide-y divide-gray-200">
+                        <li class="p-4 hover:bg-gray-50">
+                            <div onclick="toggleDropdown('departure-${index}')" class="cursor-pointer">
+                                <div class="flex items-center justify-between">
+                                    <p class="text-sm font-medium text-indigo-600 truncate">${departure.callsign} - ${departure.departure} -> ${departure.arrival}</p>
+                                    <div class="ml-2 flex-shrink-0 flex">
+                                        <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Details</p>
+                                    </div>
+                                </div>
+                                <div id="departure-${index}" class="hidden mt-4">
+                                    <p>Callsign: ${departure.callsign}</p>
+                                    <p>Aircraft: ${departure.aircraft}</p>
+                                    <p>Altitude: ${departure.altitude} ft</p>
+                                    <p>Cruise Speed: ${departure.cruise_speed} knots</p>
+                                    <p>Route: ${departure.route}</p>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>`;
+            });
+        }
         departuresContent += '</div>'; // Close the div that sets the fixed height and overflow
 
+
+        // Initialize airport details content
+        var detailsContent = `
+            <div class="p-4 details-container" style="color: black;">
+                <p><strong><i class="fa-solid fa-input-text"></i></strong> ${data.airportName}</p>
+                <hr>
+                <p><strong><i class="fa-solid fa-passport"></i></strong> ${data.airportIdent}</p>
+                <hr>
+                <p><strong><i class="fa-solid fa-location-dot"></i></i></strong> ${data.airportRegion}</p>
+                <hr>
+                <p><strong><i class="fa-solid fa-clock"></i></strong> ${data.airportLocalTime}</p>
+            </div>
+        `;
+
+
+        // Populate the tabs with the fetched data
+        document.getElementById("details").innerHTML = detailsContent;
         document.getElementById("arrivals").innerHTML = arrivalsContent;
         document.getElementById("departures").innerHTML = departuresContent;
+
+        // Now set up the live time update, updating every minute
+        setupLiveTimeUpdate(airportIdent, 60000);
+        // Show the airport card
         document.getElementById("airport-card").style.display = "block";
     });
 }
+
+function fetchAirportLocalTime(airportIdent) {
+    var url = `api/airport_local_time/${airportIdent}/`; // Adjust the URL as per your actual API endpoint
+
+    fetch(url)
+    .then(response => response.json())
+    .then(data => {
+        document.querySelector(".details-container .local-time").textContent = `Local Time: ${data.localTime}`;
+    })
+    .catch(error => console.error('Error fetching local time:', error));
+}
+
+// This function sets up the periodic update
+function setupLiveTimeUpdate(airportIdent, interval) {
+    // Immediately update the time once
+    fetchAirportLocalTime(airportIdent);
+
+    // Set up the interval for live updating
+    setInterval(() => {
+        fetchAirportLocalTime(airportIdent);
+    }, interval); // interval in milliseconds, e.g., 60000 for 1 minute
+}
+
+
 
 
 

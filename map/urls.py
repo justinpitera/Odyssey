@@ -19,6 +19,7 @@ from .views import (
     inbound_flights,
     airport_details,
     aircraft_card,
+    get_local_time_from_ident,
 )
 
 urlpatterns = [
@@ -41,4 +42,5 @@ urlpatterns = [
     path('api/inbound_flights/', inbound_flights, name='inbound_flights'),
     path('api/airport_details/<str:airport_ident>/', airport_details, name='airport-details'),
     path('aircraft_card', aircraft_card, name='aircraft-card'),
+    path('api/get_local_time_from_ident/<str:ident>/', get_local_time_from_ident, name='get_local_time_from_ident'),
 ]
