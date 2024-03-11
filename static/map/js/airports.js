@@ -59,11 +59,20 @@ function fetchAirportDetails(airportIdent) {
 
         // Initialize arrivals content with a surrounding div that has a fixed height and overflow-auto
         var arrivalsContent = '<div class="max-h-96 overflow-auto space-y-4">'; // Added space-y-4 for spacing between cards
+        var countOfArrivals = 0
+        var countOfDepartures = 0;
         if (data.arrivals.length === 0) {
             
             arrivalsContent += '<div class="p-4 details-container" style="color: black;"><p>No arrivals available...</p></div>';
             
         } else {
+            if (data.arrivals.length === 0 && data.departures.length === 0) {
+                
+            } else {
+                countOfArrivals = data.arrivals.length;
+                countOfDepartures = data.departures.length;
+            }
+
             data.arrivals.forEach((arrival, index) => {
                 arrivalsContent += `
                 <div class="bg-white shadow overflow-hidden sm:rounded-lg"> <!-- Changed rounded-md to rounded-lg and removed sm: -->
@@ -71,17 +80,17 @@ function fetchAirportDetails(airportIdent) {
                         <li class="p-4 hover:bg-gray-50"> <!-- Added padding here and hover effect directly -->
                             <div onclick="toggleDropdown('arrival-${index}')" class="cursor-pointer">
                                 <div class="flex items-center justify-between">
-                                    <p class="text-sm font-medium text-indigo-600 truncate">${arrival.callsign} - ${arrival.departure} -> ${arrival.arrival}</p>
+                                    <p class="text-sm font-medium text-indigo-600 truncate"><strong>${arrival.callsign}</strong> - ${arrival.departure} <i class="fa-solid fa-arrow-right"></i> ${arrival.arrival}</p>
                                     <div class="ml-2 flex-shrink-0 flex">
                                         <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Details</p>
                                     </div>
                                 </div>
                                 <div id="arrival-${index}" class="hidden mt-4">
-                                    <p>Callsign: ${arrival.callsign}</p>
-                                    <p>Aircraft: ${arrival.aircraft}</p>
-                                    <p>Altitude: ${arrival.altitude} ft</p>
-                                    <p>Cruise Speed: ${arrival.cruise_speed} knots</p>
-                                    <p>Route: ${arrival.route}</p>
+                                <p><i class="fas fa-plane"></i> Aircraft: ${arrival.aircraft}</p>
+                                <p><i class="fas fa-arrows-alt-v"></i> Altitude: ${arrival.altitude} ft</p>
+                                <p><i class="fas fa-tachometer-alt"></i> Cruise Speed: ${arrival.cruise_speed} knots</p>
+                                <p><i class="fas fa-route"></i> Route: ${arrival.route}</p>
+
                                 </div>
                             </div>
                         </li>
@@ -103,18 +112,19 @@ function fetchAirportDetails(airportIdent) {
                         <li class="p-4 hover:bg-gray-50">
                             <div onclick="toggleDropdown('departure-${index}')" class="cursor-pointer">
                                 <div class="flex items-center justify-between">
-                                    <p class="text-sm font-medium text-indigo-600 truncate">${departure.callsign} - ${departure.departure} -> ${departure.arrival}</p>
+                                    <p class="text-sm font-medium text-indigo-600 truncate"><strong>${departure.callsign}</strong> - ${departure.departure} <i class="fa-solid fa-arrow-right"></i> ${departure.arrival}</p>
                                     <div class="ml-2 flex-shrink-0 flex">
                                         <p class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Details</p>
                                     </div>
                                 </div>
-                                <div id="departure-${index}" class="hidden mt-4">
-                                    <p>Callsign: ${departure.callsign}</p>
-                                    <p>Aircraft: ${departure.aircraft}</p>
-                                    <p>Altitude: ${departure.altitude} ft</p>
-                                    <p>Cruise Speed: ${departure.cruise_speed} knots</p>
-                                    <p>Route: ${departure.route}</p>
+                                    <div id="departure-${index}" class="hidden mt-4">
+                                    <p><i class="fas fa-plane"></i> Aircraft: ${departure.aircraft}</p>
+                                    <p><i class="fas fa-arrows-alt-v"></i> Altitude: ${departure.altitude} ft</p>
+                                    <p><i class="fas fa-tachometer-alt"></i> Cruise Speed: ${departure.cruise_speed} knots</p>
+                                    <p><i class="fas fa-route"></i> Route: ${departure.route}</p>
+
                                 </div>
+                            
                             </div>
                         </li>
                     </ul>
@@ -134,6 +144,9 @@ function fetchAirportDetails(airportIdent) {
                 <p><strong><i class="fa-solid fa-location-dot"></i></i></strong> ${data.airportRegion}</p>
                 <hr>
                 <p><strong><i class="fa-solid fa-clock"></i></strong> ${data.airportLocalTime}</p>
+                <hr>
+                <p><strong><i class="fa-solid fa-plane-arrival"></i></strong> ${countOfArrivals}</p>
+                <p><strong><i class="fa-solid fa-plane-departure"></i></strong> ${countOfDepartures}</p>
             </div>
         `;
 

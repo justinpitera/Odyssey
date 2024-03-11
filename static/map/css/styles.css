@@ -230,3 +230,37 @@ body, html {
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     border-radius: 8px;
 }
+
+.departure-card {
+    margin: 20px auto;
+    background: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 500px;
+}
+
+.card-header {
+    background: #007BFF;
+    color: #ffffff;
+    padding: 10px 15px;
+}
+
+.card-header h3 {
+    margin: 0;
+}
+
+.card-content {
+    padding: 15px;
+    line-height: 1.6;
+    background: #f9f9f9;
+}
+
+.card-content p {
+    margin: 10px 0;
+}
+
+.card-content p i {
+    margin-right: 5px;
+    color: #303030;
+}
