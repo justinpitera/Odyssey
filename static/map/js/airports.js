@@ -66,12 +66,9 @@ function fetchAirportDetails(airportIdent) {
             arrivalsContent += '<div class="p-4 details-container" style="color: black;"><p>No arrivals available...</p></div>';
             
         } else {
-            if (data.arrivals.length === 0 && data.departures.length === 0) {
-                
-            } else {
-                countOfArrivals = data.arrivals.length;
-                countOfDepartures = data.departures.length;
-            }
+            countOfArrivals = data.arrivals.length;
+            countOfDepartures = data.departures.length;
+
 
             data.arrivals.forEach((arrival, index) => {
                 arrivalsContent += `
@@ -90,6 +87,23 @@ function fetchAirportDetails(airportIdent) {
                                 <p><i class="fas fa-arrows-alt-v"></i> Altitude: ${arrival.altitude} ft</p>
                                 <p><i class="fas fa-tachometer-alt"></i> Cruise Speed: ${arrival.cruise_speed} knots</p>
                                 <p><i class="fas fa-route"></i> Route: ${arrival.route}</p>
+                                <p><i class="fa-solid fa-plane-departure"></i> Departure: ${arrival.departureTime}</p>
+                                <p><i class="fa-solid fa-clock"></i> Enroute Time: ${arrival.enrouteTime}</p>
+                                <p><i class="fa-solid fa-plane-arrival"></i> Arrival: ${arrival.arrivalTime}</p>
+                                <p>Remaining: ${arrival.distanceRemaining}</p>
+                                <div class="flex items-center">
+                    <!-- Flight start icon -->
+                    <i class="fas fa-plane-departure"></i>
+
+                    <!-- Progress bar container -->
+                    <div class="w-full bg-gray-200 rounded-full h-4 mx-4">
+                        <!-- Progress indicator -->
+                        <div class="bg-blue-600 h-4 rounded-full" style="width: ${100-arrival.distanceRemaining}%"></div>
+                    </div>
+
+                    <!-- Flight end icon -->
+                    <i class="fas fa-plane-arrival"></i>
+                    </div>
 
                                 </div>
                             </div>
@@ -122,6 +136,10 @@ function fetchAirportDetails(airportIdent) {
                                     <p><i class="fas fa-arrows-alt-v"></i> Altitude: ${departure.altitude} ft</p>
                                     <p><i class="fas fa-tachometer-alt"></i> Cruise Speed: ${departure.cruise_speed} knots</p>
                                     <p><i class="fas fa-route"></i> Route: ${departure.route}</p>
+                                    <p><i class="fa-solid fa-plane-departure"></i> Departure: ${departure.departureTime}</p>
+                                    <p><i class="fa-solid fa-clock"></i> Enroute Time: ${departure.enrouteTime}</p>
+                                    <p><i class="fa-solid fa-plane-arrival"></i> Arrival: ${departure.arrivalTime}</p>
+                                    <p>Remaining: ${departure.distanceRemaining}</p>
 
                                 </div>
                             

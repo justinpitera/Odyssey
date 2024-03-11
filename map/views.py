@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from xml.etree import ElementTree
 from django.http import HttpResponse, JsonResponse
@@ -99,8 +99,6 @@ def fetch_vatsim_data(request):
         data = response.json()
 
         pilots_data = data.get('pilots', [])
-        # You can now process pilots_data as needed or return it directly
-        print(pilots_data)
         return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
     except requests.RequestException as e:
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
@@ -194,7 +192,30 @@ def airports_view(request):
     # Return both the filtered list of airports and the search results
     return JsonResponse({'airports': airports, 'searchList': searchList, 'results': results}, safe=False)
 
+def convert_to_normal_time(time_str):
+    # Convert the time string to a datetime object
+    time_obj = datetime.strptime(time_str, "%H%M")
+    
+    # Format the datetime object as a string in the desired format
+    normal_time = time_obj.strftime("%I:%M %p")
+    
+    return normal_time
 
+
+def get_standard_time_of_arrival(dep_time, enroute_time):
+    # Convert departure time string to datetime object
+    deptime_obj = datetime.strptime(dep_time, "%H%M")
+    
+    # Convert enroute time string to timedelta object
+    enroute_time = timedelta(hours=int(enroute_time[:2]), minutes=int(enroute_time[2:]))
+    
+    # Calculate arrival time
+    arrival_time_obj = deptime_obj + enroute_time
+    
+    # Format the arrival time as a string in the desired format
+    arrival_normal_time = arrival_time_obj.strftime("%I:%M %p")
+    
+    return arrival_normal_time
 
 def airport_details(request, airport_ident):
     vatsim_data = fetch_flight_data()
@@ -207,6 +228,16 @@ def airport_details(request, airport_ident):
 
     for flight in process_flight_data(vatsim_data):
         if flight['arrival'] == airport_ident:
+            if flight['enroute_time'] is None:
+                enrouteTime = "N/A"
+            if flight['deptime'] is None:
+                departureTime = "N/A"
+            departureTime = convert_to_normal_time(flight['deptime'])
+            enrouteTime = convert_to_normal_time(flight['enroute_time'])
+            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+            vatsimID = flight['cid']
+            distanceRemaining = get_remaining_distance(request, vatsimID)
+
             arrivals.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -214,9 +245,18 @@ def airport_details(request, airport_ident):
                 'aircraft': flight['aircraft_short'],
                 'cruise_speed': flight['cruise_tas'],
                 'altitude': flight['altitude'],
-                'route': flight['route'],  # You may need to adjust this based on available data
+                'route': flight['route'], 
+                'arrivalTime': arrivalTime,
+                'departureTime': departureTime,
+                'enrouteTime': enrouteTime,
+                'distanceRemaining': distanceRemaining
             })
         elif flight['departure'] == airport_ident:
+            departureTime = convert_to_normal_time(flight['deptime'])
+            enrouteTime = convert_to_normal_time(flight['enroute_time'])[:-3]
+            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+            vatsimID = flight['cid']
+            distanceRemaining = get_remaining_distance(request, vatsimID)
             departures.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -224,7 +264,11 @@ def airport_details(request, airport_ident):
                 'aircraft': flight['aircraft_short'],
                 'cruise_speed': flight['cruise_tas'],
                 'altitude': flight['altitude'],
-                'route': flight['route'],  # You may need to adjust this based on available data
+                'route': flight['route'],  
+                'arrivalTime': arrivalTime,
+                'departureTime': departureTime,
+                'enrouteTime': enrouteTime,
+                'distanceRemaining': distanceRemaining
             })
 
     airportName = Airport.objects.get(ident=airport_ident).name
@@ -849,6 +893,7 @@ def process_flight_data(data):
             'name': prefile.get('name', ''),
             'callsign': prefile.get('callsign', ''),
             'transponder': prefile.get('transponder', ''),
+            'cid': prefile.get('cid', ''),
         })
         
         flights.append(flight_details)
@@ -864,3 +909,55 @@ def vatsim_flight_details(request):
         return JsonResponse({"flights": processed_flights})
     else:
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
+
+
+def find_pilot_by_cid(cid):
+    vatsim_data = fetch_flight_data()
+    for pilot in vatsim_data.get("pilots", []):
+        if str(pilot.get("cid", "")) == str(cid):
+            return pilot
+    return None
+
+def get_remaining_distance(request, cid):
+    vatsim_data = fetch_vatsim_data(request)
+
+    if vatsim_data is None:
+        return JsonResponse({"error": "Could not fetch VATSIM data"}, status=500)
+    
+    pilot_data = find_pilot_by_cid(cid)
+    if pilot_data is None:
+        return JsonResponse({"error": "Pilot not found"}, status=404)
+    flight_plan = pilot_data.get('flight_plan', {})  
+    route = flight_plan.get('route', '')
+    current_latitude = float(pilot_data.get('latitude', 0)) 
+    current_longitude = float(pilot_data.get('longitude', 0)) 
+
+    waypoints_data = extract_waypoints_from_route(route)
+    ordered_waypoints = match_waypoints_in_db(waypoints_data)
+
+    # Calculate total distance
+    total_distance = 0
+    for i in range(len(ordered_waypoints) - 1):
+        wp1 = ordered_waypoints[i]
+        wp2 = ordered_waypoints[i + 1]
+        total_distance += haversine(wp1.longitude_deg, wp1.latitude_deg, wp2.longitude_deg, wp2.latitude_deg)
+
+    # Find nearest waypoint to current position and calculate remaining distance
+    remaining_distance = 0
+    nearest_distance = float('inf')
+    for i, wp in enumerate(ordered_waypoints):
+        distance_to_wp = haversine(current_longitude, current_latitude, wp.longitude_deg, wp.latitude_deg)
+        if distance_to_wp < nearest_distance:
+            nearest_distance = distance_to_wp
+            # Calculate remaining distance from this waypoint to the end
+            remaining_distance = sum(haversine(wp.longitude_deg, wp.latitude_deg, ordered_waypoints[j].longitude_deg, ordered_waypoints[j].latitude_deg) for j in range(i, len(ordered_waypoints) - 1))
+            # Include distance from current position to this waypoint if not starting from it
+            if i > 0:
+                remaining_distance += distance_to_wp
+
+    # Calculate the percentage remaining
+    if total_distance > 0:  # Prevent division by zero
+        remaining_percentage = (remaining_distance / total_distance) * 100
+    else:
+        remaining_percentage = 0
+    return remaining_percentage

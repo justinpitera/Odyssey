@@ -21,6 +21,8 @@ from .views import (
     aircraft_card,
     get_local_time_from_ident,
     vatsim_flight_details,
+    get_remaining_distance,
+
 )
 
 urlpatterns = [
@@ -45,4 +47,5 @@ urlpatterns = [
     path('aircraft_card', aircraft_card, name='aircraft-card'),
     path('api/get_local_time_from_ident/<str:ident>/', get_local_time_from_ident, name='get_local_time_from_ident'),
     path('api/vatsim_flight_details/', vatsim_flight_details, name='vatsim_flight_details'),
+    path('api/get_remaining_distance/<int:cid>', get_remaining_distance, name='get_remaining_distance'),
 ]
