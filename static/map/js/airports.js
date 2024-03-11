@@ -156,8 +156,7 @@ function fetchAirportDetails(airportIdent) {
         document.getElementById("arrivals").innerHTML = arrivalsContent;
         document.getElementById("departures").innerHTML = departuresContent;
 
-        // Now set up the live time update, updating every minute
-        setupLiveTimeUpdate(airportIdent, 60000);
+
         // Show the airport card
         document.getElementById("airport-card").style.display = "block";
     });

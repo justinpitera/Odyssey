@@ -197,38 +197,41 @@ def airports_view(request):
 
 
 def airport_details(request, airport_ident):
+    vatsim_data = fetch_flight_data()
+    
+    if vatsim_data is None:
+        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
+    
+    arrivals = []
+    departures = []
 
-    arrivals_queryset = VATSIMFlight.objects.filter(arrival=airport_ident)
-    departures_queryset = VATSIMFlight.objects.filter(departure=airport_ident)
+    for flight in process_flight_data(vatsim_data):
+        if flight['arrival'] == airport_ident:
+            arrivals.append({
+                'callsign': flight['callsign'],
+                'departure': flight['departure'],
+                'arrival': flight['arrival'],
+                'aircraft': flight['aircraft_short'],
+                'cruise_speed': flight['cruise_tas'],
+                'altitude': flight['altitude'],
+                'route': flight['route'],  # You may need to adjust this based on available data
+            })
+        elif flight['departure'] == airport_ident:
+            departures.append({
+                'callsign': flight['callsign'],
+                'departure': flight['departure'],
+                'arrival': flight['arrival'],
+                'aircraft': flight['aircraft_short'],
+                'cruise_speed': flight['cruise_tas'],
+                'altitude': flight['altitude'],
+                'route': flight['route'],  # You may need to adjust this based on available data
+            })
 
     airportName = Airport.objects.get(ident=airport_ident).name
     airportIdent = Airport.objects.get(ident=airport_ident).ident
     airportRegion = Airport.objects.get(ident=airport_ident).iso_region
-    airportLocalTime = get_local_time_from_ident(request,airport_ident)
+    airportLocalTime = get_local_time_from_ident(request, airport_ident)
     
-    # Manually construct the list of dictionaries for serialization
-    arrivals = [{
-        'vatsim_id': flight.vatsim_id,
-        'callsign': flight.callsign,
-        'departure': flight.departure,
-        'arrival': flight.arrival,
-        'aircraft': flight.aircraft,
-        'cruise_speed': flight.cruise_speed,
-        'altitude': flight.altitude,
-        'route': flight.route,
-    } for flight in arrivals_queryset]
-
-    departures = [{
-        'vatsim_id': flight.vatsim_id,
-        'callsign': flight.callsign,
-        'departure': flight.departure,
-        'arrival': flight.arrival,
-        'aircraft': flight.aircraft,
-        'cruise_speed': flight.cruise_speed,
-        'altitude': flight.altitude,
-        'route': flight.route,
-    } for flight in departures_queryset]
-
     return JsonResponse({
         'arrivals': arrivals,
         'departures': departures,
@@ -268,9 +271,6 @@ def get_local_time_from_ident(request, airport_ident):
         return f"Error fetching time: {e}"
     except ElementTree.ParseError:
         return "Error parsing the XML response."
-
-
-
 
 
 
@@ -791,3 +791,76 @@ async def fetch_and_save_inbound_flights():
 def inbound_flights(request):
     asyncio.run(fetch_and_save_inbound_flights())
     return JsonResponse({'status': 'Flight plans updated in the database.'})
+
+
+@require_http_methods(["GET"])
+def fetch_vatsim_data(request):
+    url = 'https://data.vatsim.net/v3/vatsim-data.json'
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
+        data = response.json()
+
+        pilots_data = data.get('pilots', [])
+        # You can now process pilots_data as needed or return it directly
+        print(pilots_data)
+        return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
+    except requests.RequestException as e:
+        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
+
+
+def fetch_flight_data():
+    url = "https://data.vatsim.net/v3/vatsim-data.json"
+    response = requests.get(url)
+    if response.status_code == 200:
+        return response.json()  # Returns the JSON response from the API
+    else:
+        return None
+
+
+def process_flight_data(data):
+    flights = []
+    
+    for prefile in data.get('pilots', []):
+        flight_plan = prefile.get('flight_plan')
+        
+        # Skip this prefile if flight_plan is None
+        if not flight_plan:
+            continue
+
+        if not flight_plan.get('arrival', '') or not flight_plan.get('departure', ''):  # Skip if no arrival or departure
+            continue
+        
+        # Extract flight_plan details
+        flight_details = {
+            'aircraft_short': flight_plan.get('aircraft_short', ''),
+            'departure': flight_plan.get('departure', ''),
+            'arrival': flight_plan.get('arrival', ''),
+            'alternate': flight_plan.get('alternate', ''),
+            'cruise_tas': flight_plan.get('cruise_tas', ''),
+            'altitude': flight_plan.get('altitude', ''),
+            'deptime': flight_plan.get('deptime', ''),
+            'enroute_time': flight_plan.get('enroute_time', ''),
+            'route': flight_plan.get('route', ''),
+        }
+
+        # Add pilot details
+        flight_details.update({
+            'name': prefile.get('name', ''),
+            'callsign': prefile.get('callsign', ''),
+            'transponder': prefile.get('transponder', ''),
+        })
+        
+        flights.append(flight_details)
+    
+    return flights
+
+
+@require_http_methods(["GET"])
+def vatsim_flight_details(request):
+    vatsim_data = fetch_flight_data()
+    if vatsim_data is not None:
+        processed_flights = process_flight_data(vatsim_data)
+        return JsonResponse({"flights": processed_flights})
+    else:
+        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)

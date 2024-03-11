@@ -20,6 +20,7 @@ from .views import (
     airport_details,
     aircraft_card,
     get_local_time_from_ident,
+    vatsim_flight_details,
 )
 
 urlpatterns = [
@@ -43,4 +44,5 @@ urlpatterns = [
     path('api/airport_details/<str:airport_ident>/', airport_details, name='airport-details'),
     path('aircraft_card', aircraft_card, name='aircraft-card'),
     path('api/get_local_time_from_ident/<str:ident>/', get_local_time_from_ident, name='get_local_time_from_ident'),
+    path('api/vatsim_flight_details/', vatsim_flight_details, name='vatsim_flight_details'),
 ]

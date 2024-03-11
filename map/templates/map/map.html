@@ -59,7 +59,69 @@
         
             animatePlaceholder(); // Start the animation
         </script>
+
+
+
+        <div class="max-w-sm rounded overflow-hidden shadow-lg bg-white z-50" style="z-index: 1000;">
+            <div class="px-6 py-4">
+              <div class="font-bold text-xl mb-2">Aircraft Details</div>
+              <p class="text-gray-700 text-base">
+                <strong>Name:</strong> John Doe
+              </p>
+              <p class="text-gray-700 text-base">
+                <strong>Groundspeed:</strong> 450 knots
+              </p>
+              <p class="text-gray-700 text-base">
+                <strong>Altitude:</strong> 35,000 ft
+              </p>
+              <p class="text-gray-700 text-base">
+                <strong>Heading:</strong> 90°
+              </p>
+              <p class="text-gray-700 text-base">
+                <strong>VATSIM ID:</strong> 123456
+              </p>
+            </div>
+          </div>
+          
+
+
+
         
+          <div id="airport-card" style="display: none; position: absolute; top: 40%; left: 10%; transform: translateY(-50%); z-index: 1000;" class="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 shadow-md dark:bg-gray-800 dark:border-gray-700 z-50">
+            <div class="draggable-handle flex justify-between items-center p-2 cursor-move">
+                <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Airport Name</h5>
+                <button id="close-card-btn" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><i class="fas fa-times"></i></button>
+            </div>
+            <!-- Tabs -->
+            <ul id="tabs" class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:border-gray-700">
+                <li class="mr-2">
+                    <a href="#" class="inline-block p-4 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" onclick="changeTab('details')"><i class="fa-regular fa-circle-info"></i> Airport Details</a>
+                </li>
+                <li class="mr-2">
+                    <a href="#" class="inline-block p-4 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" onclick="changeTab('arrivals')"><i class="fa-regular fa-plane-arrival"></i> Arrivals</a>
+                </li>
+                <li class="mr-2">
+                    <a href="#" class="inline-block p-4 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300 dark:hover:text-gray-300" onclick="changeTab('departures')"><i class="fa-regular fa-plane-departure"></i> Departures</a>
+                </li>
+
+            </ul>
+            
+            <!-- Tab Contents -->
+            <div id="tabContents">
+                <div id="details" class="hidden p-4">
+                    <p class="text-gray-700 dark:text-gray-400">Airport Details content...</p>
+                </div>
+                <div id="arrivals" class="hidden p-4">
+                    <p class="text-gray-700 dark:text-gray-400">Arrivals content...</p>
+                </div>
+                <div id="departures" class="hidden p-4">
+                    <p class="text-gray-700 dark:text-gray-400">Departures content...</p>
+                </div>
+
+            </div>
+            </div>
+        </div>
+
         <div id="airport-card" style="display: none; position: absolute; top: 40%; left: 10%; transform: translateY(-50%); z-index: 1000;" class="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 shadow-md dark:bg-gray-800 dark:border-gray-700 z-50">
             <div class="draggable-handle flex justify-between items-center p-2 cursor-move">
                 <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Airport Name</h5>
