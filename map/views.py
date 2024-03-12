@@ -232,11 +232,9 @@ def airport_details(request, airport_ident):
                 enrouteTime = "N/A"
             if flight['deptime'] is None:
                 departureTime = "N/A"
-            departureTime = convert_to_normal_time(flight['deptime'])
-            enrouteTime = convert_to_normal_time(flight['enroute_time'])
-            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+
             vatsimID = flight['cid']
-            distanceRemaining = get_remaining_distance(request, vatsimID)
+            distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
 
             arrivals.append({
                 'callsign': flight['callsign'],
@@ -246,17 +244,11 @@ def airport_details(request, airport_ident):
                 'cruise_speed': flight['cruise_tas'],
                 'altitude': flight['altitude'],
                 'route': flight['route'], 
-                'arrivalTime': arrivalTime,
-                'departureTime': departureTime,
-                'enrouteTime': enrouteTime,
                 'distanceRemaining': distanceRemaining
             })
         elif flight['departure'] == airport_ident:
-            departureTime = convert_to_normal_time(flight['deptime'])
-            enrouteTime = convert_to_normal_time(flight['enroute_time'])[:-3]
-            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
             vatsimID = flight['cid']
-            distanceRemaining = get_remaining_distance(request, vatsimID)
+            distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
             departures.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -265,9 +257,6 @@ def airport_details(request, airport_ident):
                 'cruise_speed': flight['cruise_tas'],
                 'altitude': flight['altitude'],
                 'route': flight['route'],  
-                'arrivalTime': arrivalTime,
-                'departureTime': departureTime,
-                'enrouteTime': enrouteTime,
                 'distanceRemaining': distanceRemaining
             })
 
@@ -911,20 +900,19 @@ def vatsim_flight_details(request):
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
 
 
-def find_pilot_by_cid(cid):
-    vatsim_data = fetch_flight_data()
+def find_pilot_by_cid(cid, vatsim_data):
+    
     for pilot in vatsim_data.get("pilots", []):
         if str(pilot.get("cid", "")) == str(cid):
             return pilot
     return None
 
-def get_remaining_distance(request, cid):
-    vatsim_data = fetch_vatsim_data(request)
+def get_remaining_distance(request, cid, vatsim_data):
 
     if vatsim_data is None:
         return JsonResponse({"error": "Could not fetch VATSIM data"}, status=500)
     
-    pilot_data = find_pilot_by_cid(cid)
+    pilot_data = find_pilot_by_cid(cid, vatsim_data)
     if pilot_data is None:
         return JsonResponse({"error": "Pilot not found"}, status=404)
     flight_plan = pilot_data.get('flight_plan', {})  
