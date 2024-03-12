@@ -67,3 +67,9 @@ class VATSIMFlight(models.Model):
     
     def __str__(self):
         return f"{self.callsign} ({self.vatsim_id})"
+class Airline(models.Model):
+    name = models.CharField(max_length=255)
+    icao = models.CharField(max_length=4, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.icao})"

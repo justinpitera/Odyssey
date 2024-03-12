@@ -6,7 +6,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 import pytz
 from map.forms import ControllerForm
-from map.models import Airport, Controller
+from map.models import Airport, Controller, Airline
 from schedule.models import Flight
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -216,7 +216,7 @@ def get_standard_time_of_arrival(dep_time, enroute_time):
     arrival_normal_time = arrival_time_obj.strftime("%I:%M %p")
     
     return arrival_normal_time
-
+from django.core.exceptions import ObjectDoesNotExist
 def airport_details(request, airport_ident):
     vatsim_data = fetch_flight_data()
     
@@ -228,14 +228,18 @@ def airport_details(request, airport_ident):
 
     for flight in process_flight_data(vatsim_data):
         if flight['arrival'] == airport_ident:
-            if flight['enroute_time'] is None:
-                enrouteTime = "N/A"
-            if flight['deptime'] is None:
-                departureTime = "N/A"
+
 
             vatsimID = flight['cid']
             distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
-
+            departureTime = convert_to_normal_time(flight['deptime'])
+            enrouteTime = flight['enroute_time']
+            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+            try:
+                airline = Airline.objects.get(icao=flight['callsign'][:3]).name
+            except ObjectDoesNotExist:
+                airline = "N/A"
+            
             arrivals.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -244,11 +248,22 @@ def airport_details(request, airport_ident):
                 'cruise_speed': flight['cruise_tas'],
                 'altitude': flight['altitude'],
                 'route': flight['route'], 
-                'distanceRemaining': distanceRemaining
+                'distanceRemaining': distanceRemaining,
+                'departureTime': departureTime,
+                'enrouteTime': enrouteTime,
+                'arrivalTime': arrivalTime,
+                'airline': airline,
             })
         elif flight['departure'] == airport_ident:
             vatsimID = flight['cid']
             distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
+            departureTime = convert_to_normal_time(flight['deptime'])
+            enrouteTime = flight['enroute_time']
+            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+            try:
+                airline = Airline.objects.get(icao=flight['callsign'][:3]).name
+            except ObjectDoesNotExist:
+                airline = "N/A"
             departures.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -257,7 +272,11 @@ def airport_details(request, airport_ident):
                 'cruise_speed': flight['cruise_tas'],
                 'altitude': flight['altitude'],
                 'route': flight['route'],  
-                'distanceRemaining': distanceRemaining
+                'distanceRemaining': distanceRemaining,
+                'departureTime': departureTime,
+                'enrouteTime': enrouteTime,
+                'arrivalTime': arrivalTime,
+                'airline': airline,
             })
 
     airportName = Airport.objects.get(ident=airport_ident).name
@@ -276,34 +295,28 @@ def airport_details(request, airport_ident):
 
 
 
+
+
+
+from timezonefinder import TimezoneFinder
+
 def get_local_time_from_ident(request, airport_ident):
-    api_key = '3Y64ZEBNNLVR'
-    base_url = 'https://api.timezonedb.com/v2.1/get-time-zone'
     latitude = Airport.objects.get(ident=airport_ident).latitude_deg
     longitude = Airport.objects.get(ident=airport_ident).longitude_deg
-    # Parameters for the API request
-    params = {
-        'key': api_key,
-        'format': 'xml',
-        'by': 'position',
-        'lat': latitude,
-        'lng': longitude
-    }
 
-    try:
-        response = requests.get(base_url, params=params)
-        response.raise_for_status()  # Raises an HTTPError if the response code was unsuccessful
-        xml_root = ElementTree.fromstring(response.content)
-        
-        # Extracting the <formatted> element
-        formatted_time = xml_root.find('formatted').text
-        # Parse the time string and format it without seconds
-        time_without_seconds = datetime.strptime(formatted_time, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d %H:%M')
-        return time_without_seconds
-    except requests.RequestException as e:
-        return f"Error fetching time: {e}"
-    except ElementTree.ParseError:
-        return "Error parsing the XML response."
+    tf = TimezoneFinder()
+    timezone_str = tf.timezone_at(lng=longitude, lat=latitude) 
+
+    timezone = pytz.timezone(timezone_str)
+    current_local_time = datetime.now(timezone)
+
+    # Format the date and time
+    formatted_date = current_local_time.strftime("%m-%d-%y")
+    formatted_time = current_local_time.strftime("%H:%M")
+
+
+    return formatted_date + " " + formatted_time
+
 
 
 
@@ -364,6 +377,35 @@ def import_airports_from_csv(request):
                 print(f"Airport already exists: {airport.name} ({airport.ident})")
     return HttpResponse('Airport data imported successfully.')
 
+
+
+
+@csrf_exempt
+def import_airline_data(request):
+    csv_file_path = 'staticfiles/data/airlines.csv'  # Ensure this path is correct and accessible
+    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            # Check if ICAO is 'N/A' or empty and replace it with None
+            icao = row['ICAO'] if row['ICAO'] not in ('N/A', '') else None
+
+
+           # Skip rows where Name or ICAO is 'N/A', empty, or ICAO is not exactly 3 letters
+            if row['Name'] in ('N/A', '') or row['ICAO'] in ('N/A', '') or len(row['ICAO']) != 3:
+                continue
+            # Using get_or_create correctly to handle existing records
+            airline, created = Airline.objects.get_or_create(
+                name=row['Name'], 
+                defaults={
+                    'icao': icao,
+                }
+            )
+            if created:
+                print(f"Created airline: {airline.name}")
+            else:
+                print(f"Airline already exists: {airline.name}")
+
+    return HttpResponse('Airline data imported successfully.')
 
 
 
@@ -460,7 +502,7 @@ def should_skip_waypoint(current, next_waypoint, previous=None, threshold=10):
     return distance_to_next > threshold and distance_from_previous > threshold
 
 from django.http import JsonResponse
-from .models import Airport, VATSIMFlight, Waypoint
+from .models import Airline, Airport, VATSIMFlight, Waypoint
 
 def fetch_online_controllers():
     url = "https://api.vatsim.net/v2/atc/online"
