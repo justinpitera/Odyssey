@@ -101,9 +101,14 @@ function getTrueHeading(heading) {
 if (window.Worker) {
     const vatsimWorker = new Worker('/static/map/js/vatsimWorker.js');
 
-    vatsimWorker.addEventListener('message', function(e) {
-        const { pilots } = e.data;
-        updateMapWithPilots(pilots);
+    // Listen for the 'load' event on your map instance
+    map.on('load', function() {
+        // Once the map has loaded, you can safely add your event listener for incoming data
+        vatsimWorker.addEventListener('message', function(e) {
+            const { pilots } = e.data;
+            // Since the map is now fully loaded, it's safe to update the map
+            updateMapWithPilots(pilots);
+        });
     });
 
     // Modify updatePilots to send message to worker

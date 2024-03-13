@@ -46,6 +46,12 @@ function createAndAddMarker(airport) {
 }
 
 function fetchAirportDetails(airportIdent) {
+// Show the airport card with loading indicators
+  document.getElementById("airport-card").style.display = "block";
+  document.getElementById("details").innerHTML = '<div class="loading p-4 details-container" style="color: black;"><p>Loading airport details...</p></div>'
+  document.getElementById("arrivals").innerHTML = '<div class="loading p-4 details-container" style="color: black;"><p>Loading arrivals...</p></div>';
+  document.getElementById("departures").innerHTML = '<div class="loading p-4 details-container" style="color: black;"><p>Loading departures...</p></div>';
+  document.querySelector(".max-w-2xl .text-2xl").textContent = "Loading..."
   var url = `api/airport_details/${airportIdent}/`;
 
   fetch(url)
@@ -71,11 +77,11 @@ function fetchAirportDetails(airportIdent) {
                 <div class="bg-white shadow overflow-hidden sm:rounded-lg">
                     <div class="p-4">
                         <div class="flex items-center justify-between mb-4">
-                            <p class="text-lg font-semibold text-indigo-600"><strong>${arrival.callsign}</strong></p>
+                            <p class="text-lg font-semibold text-indigo-600" onclick="zoomToLocation(${arrival.latitude}, ${arrival.longitude})"><strong>${arrival.callsign}</strong></p>
                             <p class="px-3 py-1 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-blue-500">${arrival.airline}</p>
                         </div>
                         <div class="flex items-start">
-                            <i class="fas fa-plane text-2xl text-blue-500"></i>
+                            <i class="fas fa-plane text-2xl text-gray-800"></i>
                             <div class="ml-4">
                                 <p class="text-xl font-medium text-gray-800">${arrival.aircraft}</p>
                                 <p class="text-md text-gray-700">Cruise Speed: <span class="font-semibold">${arrival.cruise_speed} knots</span>, Altitude: <span class="font-semibold">${arrival.altitude} ft</span></p>
@@ -125,7 +131,7 @@ function fetchAirportDetails(airportIdent) {
                             <p class="px-3 py-1 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-blue-500">${departure.airline}</p>
                         </div>
                         <div class="flex items-start">
-                            <i class="fas fa-plane text-2xl text-blue-500"></i>
+                            <i class="fas fa-plane text-2xl text-gray-800"></i>
                             <div class="ml-4">
                                 <p class="text-xl font-medium text-gray-800">${departure.aircraft}</p>
                                 <p class="text-md text-gray-700">Cruise Speed: <span class="font-semibold">${departure.cruise_speed} knots</span>, Altitude: <span class="font-semibold">${departure.altitude} ft</span></p>
@@ -176,18 +182,18 @@ function fetchAirportDetails(airportIdent) {
             </div>
         `;
 
+
+
       // Populate the tabs with the fetched data
       document.getElementById("details").innerHTML = detailsContent;
       document.getElementById("arrivals").innerHTML = arrivalsContent;
       document.getElementById("departures").innerHTML = departuresContent;
 
-      // Show the airport card
-      document.getElementById("airport-card").style.display = "block";
     });
 }
 
 function fetchAirportLocalTime(airportIdent) {
-  var url = `api/airport_local_time/${airportIdent}/`; // Adjust the URL as per your actual API endpoint
+  var url = `api/airport_local_time/${airportIdent}/`;
 
   fetch(url)
     .then((response) => response.json())

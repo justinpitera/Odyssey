@@ -171,9 +171,15 @@ function addLayerForType(type) {
 
 
 
-map.on('moveend', fetchAndUpdateATCControllersDirectly());
+// Correctly pass the function as a callback without invoking it
+map.on('moveend', fetchAndUpdateATCControllersDirectly);
+
+// Initial call to fetch and update ATC controllers
 fetchAndUpdateATCControllersDirectly();
+
+// Set an interval to periodically fetch and update ATC controllers
 setInterval(fetchAndUpdateATCControllersDirectly, 15000);
+
 
 // Initialize objects to keep track of GeoJSON features
 const vatsimPilotGeoJSON = {};

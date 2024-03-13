@@ -12,8 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 searchInput.value = firstResult.name; // Fill the search input with the first result
                 resultsDiv.style.display = 'none'; // Hide the results div
                 if (firstResult.lat && firstResult.lon) {
-                    console.log(firstResult.lat, firstResult.lon);
-                    zoomToLocation(firstResult.lat, firstResult.lon); // Zoom to the first search result location
+                    zoomToLocation(firstResult.lat, firstResult.lon); 
+                    fetchAirportDetails(firstResult.ident);// Zoom to the first search result location
                 }
             }
             return; // Prevent further execution when Enter is pressed
@@ -72,8 +72,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     searchInput.value = result.name; // Use name for selection
                     resultsDiv.style.display = 'none';
                     if (result.lat && result.lon) {
-                        console.log(result.lat, result.lon);
                         zoomToLocation(result.lat, result.lon);
+                        fetchAirportDetails(result.ident); 
                     }
                 };
                 resultsDiv.appendChild(div);
@@ -91,6 +91,7 @@ function zoomToLocation(lat, lng) {
         essential: true, // this animation is considered essential with respect to prefers-reduced-motion
         zoom: 13
     });
+    
 }
 
 document.getElementById('clear-input').addEventListener('click', function() {

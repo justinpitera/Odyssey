@@ -6,7 +6,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 import pytz
 from map.forms import ControllerForm
-from map.models import Airport, Controller, Airline
+from map.models import Airport, Controller
 from schedule.models import Flight
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -20,6 +20,14 @@ import asyncio
 import aiohttp
 from django.forms.models import model_to_dict
 from asgiref.sync import sync_to_async
+
+# Define your custom User-Agent string
+user_agent = 'SimTrail/1.0 (SimTrail; https://simtrail.com/)'
+
+# Include the User-Agent in the headers of your request
+headers = {
+    'User-Agent': user_agent
+}
 
 @login_required
 def aircraft_card(request):
@@ -43,7 +51,7 @@ def aircraft_map(request):
         aircraft = Flight.objects.filter(is_active=True)
         context = {
             'aircraft': aircraft,
-            'page_title': 'Odyssey Network',
+            'page_title': 'Simtrail',
         }
     return render(request, 'map/map.html', context)
 
@@ -94,7 +102,7 @@ def waypoints_view(request):
 def fetch_vatsim_data(request):
     url = 'https://data.vatsim.net/v3/vatsim-data.json'
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
         data = response.json()
 
@@ -108,7 +116,7 @@ def search_vatsim_pilots(request):
     search_query = request.GET.get('query', '').lower()
     url = 'https://data.vatsim.net/v3/vatsim-data.json'
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         data = response.json()
 
@@ -216,6 +224,7 @@ def get_standard_time_of_arrival(dep_time, enroute_time):
     arrival_normal_time = arrival_time_obj.strftime("%I:%M %p")
     
     return arrival_normal_time
+
 from django.core.exceptions import ObjectDoesNotExist
 def airport_details(request, airport_ident):
     vatsim_data = fetch_flight_data()
@@ -236,9 +245,12 @@ def airport_details(request, airport_ident):
             enrouteTime = flight['enroute_time']
             arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
             try:
-                airline = Airline.objects.get(icao=flight['callsign'][:3]).name
+                airline_query = Airline.objects.filter(icao=flight['callsign'][:3])
+                airline = airline_query.first().name if airline_query.exists() else "N/A"
             except ObjectDoesNotExist:
+                # This exception block might not be needed anymore since .filter().first() won't raise ObjectDoesNotExist
                 airline = "N/A"
+
             
             arrivals.append({
                 'callsign': flight['callsign'],
@@ -253,6 +265,8 @@ def airport_details(request, airport_ident):
                 'enrouteTime': enrouteTime,
                 'arrivalTime': arrivalTime,
                 'airline': airline,
+                'latitude': flight['latitude'],
+                'longitude': flight['longitude'],
             })
         elif flight['departure'] == airport_ident:
             vatsimID = flight['cid']
@@ -261,9 +275,12 @@ def airport_details(request, airport_ident):
             enrouteTime = flight['enroute_time']
             arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
             try:
-                airline = Airline.objects.get(icao=flight['callsign'][:3]).name
+                airline_query = Airline.objects.filter(icao=flight['callsign'][:3])
+                airline = airline_query.first().name if airline_query.exists() else "N/A"
             except ObjectDoesNotExist:
+                # This exception block might not be needed anymore since .filter().first() won't raise ObjectDoesNotExist
                 airline = "N/A"
+
             departures.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -277,6 +294,8 @@ def airport_details(request, airport_ident):
                 'enrouteTime': enrouteTime,
                 'arrivalTime': arrivalTime,
                 'airline': airline,
+                'latitude': flight['latitude'],
+                'longitude': flight['longitude'],
             })
 
     airportName = Airport.objects.get(ident=airport_ident).name
@@ -316,8 +335,6 @@ def get_local_time_from_ident(request, airport_ident):
 
 
     return formatted_date + " " + formatted_time
-
-
 
 
 
@@ -377,35 +394,6 @@ def import_airports_from_csv(request):
                 print(f"Airport already exists: {airport.name} ({airport.ident})")
     return HttpResponse('Airport data imported successfully.')
 
-
-
-
-@csrf_exempt
-def import_airline_data(request):
-    csv_file_path = 'staticfiles/data/airlines.csv'  # Ensure this path is correct and accessible
-    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            # Check if ICAO is 'N/A' or empty and replace it with None
-            icao = row['ICAO'] if row['ICAO'] not in ('N/A', '') else None
-
-
-           # Skip rows where Name or ICAO is 'N/A', empty, or ICAO is not exactly 3 letters
-            if row['Name'] in ('N/A', '') or row['ICAO'] in ('N/A', '') or len(row['ICAO']) != 3:
-                continue
-            # Using get_or_create correctly to handle existing records
-            airline, created = Airline.objects.get_or_create(
-                name=row['Name'], 
-                defaults={
-                    'icao': icao,
-                }
-            )
-            if created:
-                print(f"Created airline: {airline.name}")
-            else:
-                print(f"Airline already exists: {airline.name}")
-
-    return HttpResponse('Airline data imported successfully.')
 
 
 
@@ -504,13 +492,28 @@ def should_skip_waypoint(current, next_waypoint, previous=None, threshold=10):
 from django.http import JsonResponse
 from .models import Airline, Airport, VATSIMFlight, Waypoint
 
+# Cache setup
+online_controllers_cache = {
+    'data': None,
+    'last_updated': 0,
+    'update_interval': 300  # Cache duration in seconds, e.g., 5 minutes
+}
+
 def fetch_online_controllers():
-    url = "https://api.vatsim.net/v2/atc/online"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()
+    current_time = time.time()
+    # Check if cached data is fresh
+    if online_controllers_cache['data'] is not None and (current_time - online_controllers_cache['last_updated']) < online_controllers_cache['update_interval']:
+        return online_controllers_cache['data']
     else:
-        return []
+        # Fetch new data if cache is stale
+
+        response = requests.get("https://api.vatsim.net/v2/atc/online", headers=headers)
+        if response.status_code == 200:
+            online_controllers_cache['data'] = response.json()
+            online_controllers_cache['last_updated'] = current_time
+            return online_controllers_cache['data']
+        else:
+            return [] 
     
 
 
@@ -542,28 +545,44 @@ DIVISION_TO_REGION_MAP = {
     "CAM": ["M"],
     "SAM": ["S"],
 }
+# Initial setup for the division cache
+division_cache = {}
+cache_update_interval = 86400  # 24 hours in seconds
 
 def fetch_controller_division(request, id):
-    try:
-        # Make an API request to the VATSIM API
-        response = requests.get(f'https://api.vatsim.net/api/ratings/{id}')
-        response.raise_for_status()  # Raise an error for bad responses
+    current_time = time.time()
+    
+    print("Checking for division data in cache.")
+    # Check if the division data is in the cache and is fresh
+    if id in division_cache and current_time - division_cache[id]['last_updated'] < cache_update_interval:
+        division = division_cache[id]['division']
+        print(f"Using cached division data for {id}: {division}")
+    else:
+        try:
+            print(f"Fetching new division data for {id}, not found in cache or cache is stale.")
+            # Make an API request to the VATSIM API
+            response = requests.get(f'https://api.vatsim.net/api/ratings/{id}', headers=headers)
+            response.raise_for_status()  # Raise an error for bad responses
+            
+            # Extract the division from the response data
+            data = response.json()
+            division = data.get('division', None)
+            
+            if division is None:
+                return HttpResponse('Division not found', status=404)
+            
+            # Update the cache with new data
+            division_cache[id] = {'division': division, 'last_updated': current_time}
         
-        # Extract the division from the response data
-        data = response.json()
-        division = data.get('division', None)
-        
-        if division is None:
-            return HttpResponse('Division not found', status=404)
-        
-        # Look up the ICAO codes for the division
-        icao_codes = DIVISION_TO_REGION_MAP.get(division, ['-1'])
-        
-        # Return the ICAO codes as a string in the HttpResponse
-        return HttpResponse(','.join(icao_codes))
-    except requests.RequestException as e:
-        # Handle any errors that occur during the API request
-        return HttpResponse(f'Error retrieving data: {str(e)}', status=500)
+        except requests.RequestException as e:
+            # Handle any errors that occur during the API request
+            return HttpResponse(f'Error retrieving data: {str(e)}', status=500)
+    
+    # Look up the ICAO codes for the division
+    icao_codes = DIVISION_TO_REGION_MAP.get(division, ['-1'])
+    
+    # Return the ICAO codes as a string in the HttpResponse
+    return HttpResponse(','.join(icao_codes))
 
 
 def search_vatsim(request):
@@ -688,20 +707,40 @@ def add_controller(request):
     return render(request, 'map/add_controller.html', {'form': form})
 
 
+import time
+
+# Initial setup for the cache
+vatsim_data_cache = {
+    'last_updated': 0,
+    'data': None,
+    'update_interval': 600  # Update every 10 minutes
+}
+
+def update_vatsim_data_cache():
+    """Update the VATSIM data cache if necessary."""
+    current_time = time.time()
+    # Check if the cache needs to be updated
+    if current_time - vatsim_data_cache['last_updated'] > vatsim_data_cache['update_interval']:
+        try:
+            response = requests.get('https://api.vatsim.net/v2/atc/online')
+            if response.status_code == 200:
+                vatsim_data_cache['data'] = response.json()
+                vatsim_data_cache['last_updated'] = current_time
+            else:
+                print("Failed to fetch data from VATSIM")
+        except Exception as e:
+            print(f"Error updating VATSIM cache: {e}")
+
 def is_online(request, vatsim_id):
-    try:
-        response = requests.get('https://api.vatsim.net/v2/atc/online')
-        if response.status_code == 200:
-            controllers = response.json()
-            for controller in controllers:
-                if controller['id'] == vatsim_id:
-                    return True
-            # If the loop completes without finding the ID, they are offline
-            return False
-        else:
-            return JsonResponse({'error': 'Failed to fetch data from VATSIM'}, status=500)
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+    """Check if a controller with the given VATSIM ID is online, using cached data."""
+    # Ensure the cache is up to date before checking
+    update_vatsim_data_cache()
+    # Now check the cached data
+    if vatsim_data_cache['data'] is not None:
+        for controller in vatsim_data_cache['data']:
+            if controller['id'] == vatsim_id:
+                return True
+    return False
 
 from django.http import JsonResponse
 from .models import Waypoint
@@ -710,7 +749,7 @@ import requests
 def fetch_flightplan_from_vatsim(vatsim_id):
     """Fetches the flight plan for a given VATSIM ID from the VATSIM API."""
     url = f"https://api.vatsim.net/v2/members/{vatsim_id}/flightplans"
-    response = requests.get(url)
+    response = requests.get(url, headers=headers)
     if response.status_code == 200:
         flightplans = response.json()
         if flightplans:
@@ -872,7 +911,7 @@ def inbound_flights(request):
 def fetch_vatsim_data(request):
     url = 'https://data.vatsim.net/v3/vatsim-data.json'
     try:
-        response = requests.get(url)
+        response = requests.get(url, headers=headers)
         response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
         data = response.json()
 
@@ -884,19 +923,65 @@ def fetch_vatsim_data(request):
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
 
 
+# Initial cache setup
+flight_data_cache = {
+    'data': None,
+    'last_updated': 0,
+    'update_interval': 300  # Cache duration in seconds, e.g., 5 minutes
+}
+
 def fetch_flight_data():
-    url = "https://data.vatsim.net/v3/vatsim-data.json"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return response.json()  # Returns the JSON response from the API
+    current_time = time.time()
+    # Check if the cache is fresh
+    if flight_data_cache['data'] is not None and (current_time - flight_data_cache['last_updated']) < flight_data_cache['update_interval']:
+        return flight_data_cache['data']
     else:
-        return None
+        # Define custom headers with a non-generic User-Agent
+        response = requests.get("https://data.vatsim.net/v3/vatsim-data.json", headers=headers)
+        if response.status_code == 200:
+            # Update the cache with the new data
+            flight_data_cache['data'] = response.json()
+            flight_data_cache['last_updated'] = current_time
+            return flight_data_cache['data']
+        else:
+            # In case of an error, return None or consider returning stale data if critical
+            return None
+        
+
+
+@csrf_exempt
+def import_airline_data(request):
+    csv_file_path = 'staticfiles/data/airlines.csv'  # Ensure this path is correct and accessible
+    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            # Check if ICAO is 'N/A' or empty and replace it with None
+            icao = row['ICAO'] if row['ICAO'] not in ('N/A', '') else None
+
+
+           # Skip rows where Name or ICAO is 'N/A', empty, or ICAO is not exactly 3 letters
+            if row['Name'] in ('N/A', '') or row['ICAO'] in ('N/A', '') or len(row['ICAO']) != 3:
+                continue
+            # Using get_or_create correctly to handle existing records
+            airline, created = Airline.objects.get_or_create(
+                name=row['Name'], 
+                defaults={
+                    'icao': icao,
+                }
+            )
+            if created:
+                print(f"Created airline: {airline.name}")
+            else:
+                print(f"Airline already exists: {airline.name}")
+
+    return HttpResponse('Airline data imported successfully.')
 
 
 def process_flight_data(data):
     flights = []
     
     for prefile in data.get('pilots', []):
+        
         flight_plan = prefile.get('flight_plan')
         
         # Skip this prefile if flight_plan is None
@@ -925,6 +1010,8 @@ def process_flight_data(data):
             'callsign': prefile.get('callsign', ''),
             'transponder': prefile.get('transponder', ''),
             'cid': prefile.get('cid', ''),
+            'latitude': prefile.get('latitude', ''),
+            'longitude': prefile.get('longitude', ''),
         })
         
         flights.append(flight_details)
@@ -950,7 +1037,6 @@ def find_pilot_by_cid(cid, vatsim_data):
     return None
 
 def get_remaining_distance(request, cid, vatsim_data):
-
     if vatsim_data is None:
         return JsonResponse({"error": "Could not fetch VATSIM data"}, status=500)
     

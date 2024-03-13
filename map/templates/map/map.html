@@ -89,7 +89,7 @@
         
           <div id="airport-card" style="display: none; position: absolute; top: 40%; left: 10%; transform: translateY(-50%); z-index: 1000;" class="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 shadow-md dark:bg-gray-800 dark:border-gray-700 z-50">
             <div class="draggable-handle flex justify-between items-center p-2 cursor-move">
-                <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Airport Name</h5>
+                <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Loading...</h5>
                 <button id="close-card-btn" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><i class="fas fa-times"></i></button>
             </div>
             <!-- Tabs -->
@@ -181,7 +181,7 @@
         </div>
         <div id="map"></div>
         <div style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
-            <a href="{% url 'map' %}" style="margin-left: 5px; color: white; text-shadow: 3px 3px 5px rgba(0,0,0,0.5);">Odyssey Network</a>
+            <a href="{% url 'map' %}" style="margin-left: 5px; color: white; text-shadow: 3px 3px 5px rgba(0,0,0,0.5);">Simtrail</a>
         </div>
 
 
@@ -201,8 +201,6 @@
 
             map.addControl(new mapboxgl.NavigationControl());
             map.on('load', () => {
-                // Initial setting of terrain
-                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.5 });
 
                 // Add fog to create a misty effect, especially at higher altitudes or distances
                 map.setFog({
@@ -217,16 +215,6 @@
                     'color': '#8899AA',
                     'intensity': 0.3
                 });
-
-                // Add or adjust the atmosphere to create a more immersive globe projection experience
-                if (!map.getAtmosphere()) { // Check if the atmosphere is not already set
-                    map.setAtmosphere({
-                        'skyType': 'atmosphere',
-                        'skyAtmosphereColor': '#000000',
-                        'skyAtmosphereSun': [0.0, 0.0],
-                        'skyAtmosphereSunIntensity': 15
-                    });
-                }
             });
 
             document.getElementById('styleSelector').addEventListener('change', function() {
