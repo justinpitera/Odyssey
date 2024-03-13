@@ -186,7 +186,11 @@
 
 
 
-        
+        <!-- Define the base URL for static files -->
+        <script type="text/javascript">
+            var staticBaseUrl = "{% static '' %}";
+        </script>
+
         
         
         <script>
@@ -226,6 +230,7 @@
                     // Ensure this function can handle being called multiple times
                     drawWaypointsAndRoute();
                     startImage();
+                    
                     // Reapply fog, light, and atmosphere settings since setStyle removes them
                     map.setFog({
                         'range': [0, 1.5],
@@ -247,18 +252,22 @@
                             'skyAtmosphereSunIntensity': 15
                         });
                     }
+
                 });
 
             });
         </script>
+
+        <script type="module" src="{% static 'map/js/control.js' %}"></script>
+        
         <script src="{% static 'map/js/airports.js' %}"></script>
         <script src="{% static 'map/js/aircraft.js' %}"></script>
         <script src="{% static 'map/js/waypoints.js' %}"></script>
         <script src="{% static 'map/js/search.js' %}"></script>
         <script src="{% static 'map/js/window.js' %}"></script>
         <script src="{% static 'map/js/vatsim.js' %}"></script>
-        <script src="{% static 'map/js/control.js' %}"></script>
         <script src="{% static 'map/js/cardControl.js' %}"></script>
+        
         <script>
         /**
         * Main function to draw waypoints and route.
