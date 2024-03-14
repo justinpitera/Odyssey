@@ -41,7 +41,7 @@ class Controller(models.Model):
     longitude_deg = models.FloatField()
     frequency = models.FloatField(default=0, null=True, blank=True)
     type = models.CharField(max_length=3)
-    division = models.CharField(max_length=10)
+    division = models.CharField(max_length=10, null=True, blank=True)
     vatsim_id = models.IntegerField()
     airport = models.ForeignKey(Airport, on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)

@@ -229,7 +229,9 @@
                 map.once('style.load', () => {
                     // Ensure this function can handle being called multiple times
                     drawWaypointsAndRoute();
+                    
                     startImage();
+                    
                     
                     // Reapply fog, light, and atmosphere settings since setStyle removes them
                     map.setFog({

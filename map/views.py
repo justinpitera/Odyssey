@@ -641,24 +641,24 @@ def update_vatsim_controllers(request):
         print(f"Processing data for controller {index} of {total_controllers}: {controller['id']}")
         search_ident = controller['callsign'].split("_")[0]
         controller_type = controller['callsign'].split("_")[-1]
-        division = fetch_controller_division(request, controller['id']).content.decode('utf-8')
+        #division = fetch_controller_division(request, controller['id']).content.decode('utf-8')
         vatsim_id = controller['id']
 
         backendName = f'{search_ident}_{controller_type}'
         
-        # Find or create the associated airport
-        division_tuple = tuple(division.replace(",", ""))  # Remove spaces and commas, then convert to tuple
-        airports = Airport.objects.filter(ident__endswith=search_ident[-3:]).exclude(type__in=['closed', 'heliport'])
+        # # Find or create the associated airport
+        # division_tuple = tuple(division.replace(",", ""))  # Remove spaces and commas, then convert to tuple
+        # airports = Airport.objects.filter(ident__endswith=search_ident[-3:]).exclude(type__in=['closed', 'heliport'])
 
-        query = Q()
-        for letter in division_tuple:
-            query |= Q(ident__startswith=letter)
-        print(division_tuple)
+        # query = Q()
+        # for letter in division_tuple:
+        #     query |= Q(ident__startswith=letter)
+        # print(division_tuple)
 
-        airport = airports.filter(query).first()
-        if airport is None:
-            print(f"No matching airport found for controller {vatsim_id} @ {backendName} with division {division}")
-            continue
+        # airport = airports.filter(query).first()
+        # if airport is None:
+        #     print(f"No matching airport found for controller {vatsim_id} @ {backendName} with division {division}")
+        #     continue
 
         # Check if the controller exists
         existing_controller = Controller.objects.filter(name=backendName).first()
@@ -667,7 +667,7 @@ def update_vatsim_controllers(request):
             existing_controller.vatsim_id = vatsim_id
             existing_controller.frequency = controller.get('frequency', 0)  # Temporary placeholder for frequency
             existing_controller.type = controller_type
-            existing_controller.division = division
+            existing_controller.division = None
             existing_controller.is_online = True
             existing_controller.save()
             print(f"Updated {backendName} with VATSIM ID: {vatsim_id}")
@@ -677,14 +677,14 @@ def update_vatsim_controllers(request):
                 name=backendName,
                 vatsim_id=vatsim_id,
                 ident=search_ident,
-                latitude_deg=airport.latitude_deg,
-                longitude_deg=airport.longitude_deg,
+                latitude_deg=0, 
+                longitude_deg=0,
                 frequency=controller.get('frequency', 0),  # Temporary placeholder for frequency
                 type=controller_type,
-                division=division,
+                division=None,
                 is_online=True,
-                airport=airport,
-            )
+                airport=None,
+            )   
             print(f"Created {backendName} with VATSIM ID: {vatsim_id}")
         updated_controllers += 1
 

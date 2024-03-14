@@ -8,5 +8,5 @@ from datetime import datetime, timedelta
 def vatsim_update():
     current_time = datetime.now()
     update_vatsim_controllers(request=None)
-    nextUpdateTime = current_time + timedelta(minutes=3)
+    nextUpdateTime = current_time + timedelta(minutes=1)
     print("Updated VATSIM data. Next update at: ", nextUpdateTime.strftime("%H:%M:%S"))

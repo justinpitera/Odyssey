@@ -129,18 +129,18 @@ if (window.Worker) {
 const iconId = 'airplane-icon'; 
 const imageUrl = '/static/images/location-arrow-vatsim.png'; 
 function startImage() {
-if (!map.hasImage(iconId)) {
-    map.loadImage(imageUrl, function(error, image) {
-        if (error) throw error;
-        map.addImage(iconId, image);
-        
-        // Initial update
+    if (!map.hasImage(iconId)) {
+        map.loadImage(imageUrl, function(error, image) {
+            if (error) throw error;
+            map.addImage(iconId, image);
+            
+            // Initial update
+            updatePilots();
+        });
+    } else {
+        // Image already exists, proceed with updating pilots
         updatePilots();
-    });
-} else {
-    // Image already exists, proceed with updating pilots
-    updatePilots();
-}
+    }
 
 }
 
@@ -279,7 +279,12 @@ function generatePopupContent(pilot) {
 // Update pilots every 15 seconds
 setInterval(updatePilots, 15000);
 
-startImage();
+
+
+map.on('load', function() {
+    startImage();
+});
+ 
 
 
 

@@ -5,9 +5,9 @@ def start_scheduler():
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         vatsim_update,
-        trigger=IntervalTrigger(seconds=180),  # Run the task every 10 minutes
+        trigger=IntervalTrigger(seconds=60), 
         id='task_vatsim_id', 
-        replace_existing=True,
+        replace_existing=False, 
     )
     scheduler.start()
 
