@@ -30,6 +30,10 @@ class Airport(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.ident})"
+    
+
+
+
 
 class Controller(models.Model):
     ident = models.CharField(max_length=4)
@@ -42,6 +46,7 @@ class Controller(models.Model):
     airport = models.ForeignKey(Airport, on_delete=models.CASCADE, blank=True, null=True)
     name = models.CharField(max_length=100, blank=True, null=True)
     is_online = models.BooleanField(default=False)
+    geoname = models.CharField(max_length=255, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         self.name = '{}_{}'.format(self.ident, self.type)

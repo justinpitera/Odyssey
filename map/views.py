@@ -691,7 +691,7 @@ def update_vatsim_controllers(request):
     return JsonResponse({'message': f'{updated_controllers} controllers processed.'})
 def controllers_data(request):
     controllers = Controller.objects.all().values(
-        'ident', 'latitude_deg', 'longitude_deg', 'type', 'division', 'vatsim_id', 'airport_id'
+        'ident', 'latitude_deg', 'longitude_deg', 'type', 'division', 'vatsim_id', 'airport_id', 'geoname'
     ).exclude(is_online=False)
     return JsonResponse({'controllers': list(controllers)})
 
@@ -713,7 +713,7 @@ import time
 vatsim_data_cache = {
     'last_updated': 0,
     'data': None,
-    'update_interval': 600  # Update every 10 minutes
+    'update_interval': 180
 }
 
 def update_vatsim_data_cache():
