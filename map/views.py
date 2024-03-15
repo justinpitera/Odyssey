@@ -20,7 +20,7 @@ import asyncio
 import aiohttp
 from django.forms.models import model_to_dict
 from asgiref.sync import sync_to_async
-
+from django.core.cache import cache
 # Define your custom User-Agent string
 user_agent = 'SimTrail/1.0 (SimTrail; https://simtrail.com/)'
 
@@ -917,17 +917,46 @@ def fetch_vatsim_data(request):
 
         pilots_data = data.get('pilots', [])
         # You can now process pilots_data as needed or return it directly
-        print(pilots_data)
         return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
     except requests.RequestException as e:
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
+        
+        
+def fetch_vatsim_flight_data(request):
+
+    cache_key = 'vatsim_data'
+    cache_time = 15  # time in seconds for cache to be valid
+
+    # Try to get cached data
+    data = cache.get(cache_key)
+    if data is not None:
+        return JsonResponse(data)  # Return cached data if available
+
+    # Fetch new data if not cached or cache is stale
+    url = 'https://data.vatsim.net/v3/vatsim-data.json'
+    try:
+        response = requests.get(url,headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        cache.set(cache_key, data, cache_time)  # Update cache
+        return JsonResponse(data)
+    except requests.RequestException as e:
+        return JsonResponse({'error': 'Failed to fetch VATSIM data', 'details': str(e)}, status=500)
 
 
 # Initial cache setup
 flight_data_cache = {
     'data': None,
     'last_updated': 0,
-    'update_interval': 300  # Cache duration in seconds, e.g., 5 minutes
+    'update_interval': 15 
+}
+
+
+# Initial cache setup
+flight_data_cache = {
+    'data': None,
+    'last_updated': 0,
+    'update_interval': 60 # Cache duration in seconds, e.g., 5 minutes
 }
 
 def fetch_flight_data():

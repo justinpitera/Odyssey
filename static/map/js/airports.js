@@ -24,9 +24,6 @@ function createAndAddMarker(airport) {
   } else if (airport.type === "medium_airport") {
     el.innerHTML =
       '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 20px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;"></i>';
-  } else if (airport.type === "heliport") {
-    el.innerHTML =
-      '<i class="fa-solid fa-helicopter-symbol" style="color: #013220; font-size: 14px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;"></i>';
   } else if (airport.type === "small_airport") {
     el.innerHTML =
       '<i class="fa-solid fa-tower-control" style="color: gray; font-size: 14px; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000, 0px 0px 6px #000;"></i>';
@@ -243,9 +240,16 @@ function fetchAndDisplayAirports() {
 // Initial fetch
 fetchAndDisplayAirports();
 
-// Update markers on map move or zoom
-map.on("moveend", fetchAndDisplayAirports);
-map.on("zoomend", fetchAndDisplayAirports);
+let debounceTimer;
+function fetchAndDisplayAirportsDebounced() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(fetchAndDisplayAirports, 500); //Adjust the debounce time as needed
+}
+
+// Update markers on map move or zoom using the debounced function
+map.on("moveend", fetchAndDisplayAirportsDebounced);
+
+
 
 // Close airport card when clicking close button
 document

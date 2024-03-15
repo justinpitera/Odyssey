@@ -1,7 +1,7 @@
 self.addEventListener('message', function(e) {
     const { action, mapBounds } = e.data;
     if (action === 'updatePilots') {
-        fetch('https://data.vatsim.net/v3/vatsim-data.json')
+        fetch('/map/api/fetch_flight_data/')
             .then(response => response.json())
             .then(data => {
                 const pilots = data.pilots;

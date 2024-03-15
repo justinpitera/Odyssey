@@ -14,17 +14,17 @@ let currentSelectedPilotId = null; // Tracks the currently selected VATSIM user
 
 const vatsimWaypointMarkers = []; // Track waypoint markers for removal
 
-// Function to fetch and update pilots directly without a worker
 function fetchAndUpdatePilotsDirectly() {
-    fetch('https://data.vatsim.net/v3/vatsim-data.json')
+    fetch('/map/api/fetch_flight_data/')  // URL to your Django view
         .then(response => response.json())
         .then(data => {
             const pilots = data.pilots;
-            // Assuming you have a way to filter or process these pilots as needed
             updateMapWithPilots(pilots);
         })
-        .catch(err => console.error('Error fetching VATSIM data:', err));
+        .catch(err => console.error('Error fetching VATSIM data from Django view:', err));
 }
+
+
 // Function to update the map with pilots' data
 function updateMapWithPilots(pilots) {
     pilots.forEach(pilot => {

@@ -23,7 +23,7 @@ from .views import (
     vatsim_flight_details,
     get_remaining_distance,
     import_airline_data,
-
+    fetch_vatsim_flight_data
 )
 
 urlpatterns = [
@@ -50,4 +50,5 @@ urlpatterns = [
     path('api/vatsim_flight_details/', vatsim_flight_details, name='vatsim_flight_details'),
     path('api/get_remaining_distance/<int:cid>', get_remaining_distance, name='get_remaining_distance'),
     path('api/import_airline_data', import_airline_data, name='import_airline_data'),
+    path('api/fetch_flight_data/', fetch_vatsim_flight_data, name='fetch_flight_data'),
 ]
