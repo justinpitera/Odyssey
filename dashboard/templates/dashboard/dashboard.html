@@ -1,35 +1,115 @@
+
 {% extends 'base.html' %}
-{%load static %}
+{% load static %}
+
 {% block content %}
-<div class="py-8 px-4">
-    <div class="grid md:grid-cols-3 gap-6">
-        <!-- Card 1 -->
-        {% if user.is_authenticated %}
-            <div class="max-w-sm rounded overflow-hidden shadow-lg bg-white dark:bg-gray-700">
-                <center><img src="{% static 'images/rank.png' %}" alt="Sunset in the mountains"></center>
-                <div class="px-6 py-4">
-                    <div class="font-bold text-xl mb-2 dark:text-white">{{user.rank}} {{user.first_name}} {{user.last_name}}</div>
-                    <p class="text-gray-700 dark:text-gray-300 text-base">
-                        You first became a pilot on {{user.date_joined|date:"F d, Y"}}. 
-                        {% if user.hours == 1 %}
-                            Since then, you have racked up {{user.hours}} flight hour.
-                        {% elif user.hours >= 1 %}
-                            Since then, you have racked up {{user.hours}} flight hours.
-                        {% else %}
-                            You have not flown any hours yet. To get started, click go to the shop and purchase an aircraft license. Afterwards, navigate to the schedule page to generate a schedule.
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="px-6 pt-4 pb-2">
-                    <span class="inline-block bg-gray-200 dark:bg-gray-800 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-400 mr-2 mb-2">{{user.hours}} Flight Hours</span>
-                    <span class="inline-block bg-gray-200 dark:bg-gray-800 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-400 mr-2 mb-2">{{user.region}}</span>
-                    {% if user.is_staff %}
-                        <span class="inline-block bg-gray-200 dark:bg-800 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-black-400 mb-2">STAFF</span>
-                    {% endif %}
-                </div>
-            </div>
-        {% endif %}
+<link rel="stylesheet" href="{% static 'dashboard/css/styles.css' %}">
+
+
+<section class="min-h-screen flex flex-col items-center justify-between bg-gradient-to-r from-indigo-800 to-indigo-900 text-white hero" id="hero-card">
+    <div class="text-center">
+        <h1 class="text-5xl font-bold mb-4">A revolutionary flight tracker.</h1>
+        <p class="mb-8">Simtrail brings you a fresh and easy way to keep tabs on your flight data, making tracking simple and straightforward.</p>
+        <a href="#explore-service" class="bg-white text-indigo-700 px-5 py-3 rounded-full font-semibold transition-colors hover:bg-indigo-100">Learn More</a>
     </div>
-</div>
+    <div class="scroll-icon pb-4">
+        <a href="#explore-service"><i class="fa-regular fa-computer-mouse-scrollwheel text-white"></i></a>
+    </div>
+</section>
+<section class="bg-gray-800 text-white text-white py-20 shadow-lg" id="explore-service" >
+    <div class="container mx-auto px-4">
+        <div class="container mx-auto px-4">
+            <div class="text-center mb-20">
+              <br>
+              <h2 class="text-5xl font-bold mb-4">Explore Our Service</h2>
+              <p class="text-xl mb-8">Discover how we can redefine your aviation experience.</p>
+            </div>
+        
+            <!-- Tracking -->
+            <div class="flex flex-wrap mb-16 items-center justify-between">
+              <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+                <h3 class="text-3xl font-semibold mb-3">Flight Tracking</h3>
+                <p class="text-lg mb-4">Keep tabs on your flights with our advanced tracking system. Whether it's monitoring current flights, revisiting past ones, or tracking activity on Simtrail and VATSIM networks, stay informed at all times.</p>
+              </div>
+              <div class="w-full lg:w-1/2 px-4">
+                <img src="{% static 'images/feature-tracking.png' %}" class="rounded-lg">
+              </div>
+            </div>
+        
+            <!-- Flight Control -->
+            <div class="flex flex-wrap mb-16 items-center justify-between flex-row-reverse">
+              <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+                <h3 class="text-3xl font-semibold mb-3">Remote Flight Control</h3>
+                <p class="text-lg mb-4">Manage your aircraft's parameters remotely. From altitude adjustments to speed, heading changes, and even pausing at critical moments, gain unparalleled control with Simtrail.</p>
+              </div>
+              <div class="w-full lg:w-1/2 px-4">
+                <img src="{% static 'images/feature-rc.png' %}" class="rounded-lg">
+              </div>
+            </div>
+        
+            <!-- Virtual Airlines -->
+            <div class="flex flex-wrap mb-16 items-center justify-between">
+              <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+                <h3 class="text-3xl font-semibold mb-3">Create Virtual Airlines</h3>
+                <p class="text-lg mb-4">Launch your very own virtual airline and invite friends to join. Customize your fleet and operations to build a unique aviation community.</p>
+              </div>
+              <div class="w-full lg:w-1/2 px-4">
+                <img src="path/to/your/virtual-airlines-image.jpg" alt="Virtual Airlines" class="rounded-lg">
+              </div>
+            </div>
+        
+            <!-- Competition -->
+            <div class="flex flex-wrap items-center justify-between flex-row-reverse">
+              <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+                <h3 class="text-3xl font-semibold mb-3">Engage in Competitions</h3>
+                <p class="text-lg mb-4">Compete against friends and other airlines in a dynamic leaderboard. Showcase your strategic prowess and climb to the top with your airline.</p>
+              </div>
+              <div class="w-full lg:w-1/2 px-4">
+                <img src="path/to/your/competition-image.jpg" alt="Competition" class="rounded-lg">
+              </div>
+            </div>
+          </div>
+    </div>
+</section>
+<section class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-800 to-indigo-900 text-white py-12">
+    <div class="text-center max-w-2xl mb-10">
+        <h2 class="text-5xl font-bold mb-4">Contact Us</h2>
+        <p class="text-xl mb-8">Simtrail is community-driven, and we're eager to hear from you. Your feedback and ideas are what help us grow and improve.</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl w-full">
+        <div class="md:pr-6 space-y-4"> <!-- Adjust spacing on mobile by adding right padding for larger screens -->
+            <h3 class="text-3xl font-bold">Join Our Community</h3>
+            <p>Connect with us and the Simtrail community on Discord. Share your experiences, get support, and discuss your ideas.</p>
+            <a href="#" class="inline-block bg-white text-indigo-800 px-5 py-3 rounded-full font-semibold transition-colors hover:bg-indigo-200 hover:shadow-md transform hover:-translate-y-1">Join our Discord</a>
+            <h3 class="text-3xl font-bold mt-6">Submit a Feature Request</h3>
+            <p>Have an idea to make Simtrail even better? Let us know by submitting a feature request.</p>
+            <a href="#" class="inline-block bg-white text-indigo-800 px-5 py-3 rounded-full font-semibold transition-colors hover:bg-indigo-200 hover:shadow-md transform hover:-translate-y-1">Submit Request</a>
+        </div>
+        <div class="md:pl-6 space-y-4 mt-6 md:mt-0"> <!-- Adjust spacing on mobile by adding left padding for larger screens -->
+            <div class="bg-white text-indigo-800 rounded-lg p-8">
+                <h3 class="text-3xl font-bold mb-4">Contact Us Directly</h3>
+                <form action="#" method="post">
+                    <div class="mb-4">
+                        <label for="name" class="block text-sm font-medium">Your Name</label>
+                        <input type="text" id="name" name="name" class="mt-1 p-2 w-full rounded-md border-2 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none focus:shadow-outline-indigo">
+                    </div>
+                    <div class="mb-4">
+                        <label for="email" class="block text-sm font-medium">Your Email</label>
+                        <input type="email" id="email" name="email" class="mt-1 p-2 w-full rounded-md border-2 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none focus:shadow-outline-indigo">
+                    </div>
+                    <div class="mb-4">
+                        <label for="message" class="block text-sm font-medium">Message</label>
+                        <textarea id="message" name="message" rows="4" class="mt-1 p-2 w-full rounded-md border-2 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 focus:outline-none focus:shadow-outline-indigo"></textarea>
+                    </div>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full font-semibold transition-colors shadow-md transform hover:-translate-y-1">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+
 
 {% endblock %}
+
+    

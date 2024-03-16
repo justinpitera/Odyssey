@@ -1,0 +1,117 @@
+@keyframes gradientAnimation {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+#hero-card {
+    /* Define the dark purple to indigo gradient */
+    background: linear-gradient(270deg, #4b0082, #130826, #1e0033, #481d8b);
+    background-size: 400% 400%;
+
+    /* Apply the animation */
+    animation: gradientAnimation 15s ease infinite;
+}
+
+
+
+
+  /* Base styles for scroll snap, applied to all devices by default */
+html, body {
+    height: 100%;
+    overflow-y: scroll;
+    /* Disable scroll snap by default to affect mobile devices first */
+    scroll-behavior: smooth;
+
+    scroll-snap-type: none;
+  }
+  section {
+    min-height: 100vh; /* Adjust this based on your design needs */
+  }
+
+  .scroll-icon {
+    display: flex;
+    justify-content: center;
+    animation: bounce 2s infinite;
+    -webkit-animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-20px);
+    }
+    60% {
+        transform: translateY(-10px);
+    }
+}
+
+.fa-computer-mouse-scrollwheel {
+    color: white;
+    font-size: 3.5em;
+}
+
+
+
+
+  /* Use a media query to enable scroll snapping on screens wider than 768px */
+  @media (min-width: 768px) {
+    html, body {
+        height: 100%;
+        overflow-y: scroll;
+        scroll-behavior: smooth;
+        scroll-snap-type: y proximity;
+      }
+      
+      section {
+        scroll-snap-align: start;
+        min-height: 100vh; 
+        scroll-snap-align: start;
+      }
+      /* Scroll Snap Container */
+      .section-container {
+        overflow-y: scroll; /* Enables vertical scrolling within the section */
+        scroll-snap-type: y proximity; /* Enables vertical scroll snapping */
+        height: 100vh; /* Adjust based on your design, could be less than 100vh for internal scroll areas */
+      }
+      
+      /* Scroll Snap Targets (Sub-items) */
+      .sub-item {
+        scroll-snap-align: start; /* Each sub-item will snap to the start of the section container */
+        height: 50vh; /* Example height, adjust based on your content */
+      }
+  }
+  
+
+  @media (max-width: 768px) {
+    .scroll-icon {
+        display: none;
+    }
+}
+
+
+/* Ensure the full height is used and content is flexibly displayed */
+.min-h-screen {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Adjusts items to justify space */
+    align-items: center; /* Centers items horizontally */
+    height: 100vh; /* Takes full viewport height */
+}
+
+/* Center content */
+.text-center {
+    flex-grow: 1; /* Allows it to expand */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Center vertically in the available space */
+    align-items: center; /* Center horizontally */
+}
