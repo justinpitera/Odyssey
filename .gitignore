@@ -2,7 +2,7 @@
 *.pyc
 *.pyo
 __pycache__/
-
+db.sqlite3
 
 # Environment variables
 .env

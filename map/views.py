@@ -226,6 +226,7 @@ def get_standard_time_of_arrival(dep_time, enroute_time):
     return arrival_normal_time
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.shortcuts import get_object_or_404
 def airport_details(request, airport_ident):
     vatsim_data = fetch_flight_data()
     
@@ -240,18 +241,15 @@ def airport_details(request, airport_ident):
 
 
             vatsimID = flight['cid']
-            distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
             departureTime = convert_to_normal_time(flight['deptime'])
             enrouteTime = flight['enroute_time']
             arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+            distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
             try:
-                airline_query = Airline.objects.filter(icao=flight['callsign'][:3])
+                airline_query = Airline.objects.filter(icao=flight['callsign'][:3]).only('name')
                 airline = airline_query.first().name if airline_query.exists() else "N/A"
             except ObjectDoesNotExist:
-                # This exception block might not be needed anymore since .filter().first() won't raise ObjectDoesNotExist
                 airline = "N/A"
-
-            
             arrivals.append({
                 'callsign': flight['callsign'],
                 'departure': flight['departure'],
@@ -268,6 +266,7 @@ def airport_details(request, airport_ident):
                 'latitude': flight['latitude'],
                 'longitude': flight['longitude'],
             })
+
         elif flight['departure'] == airport_ident:
             vatsimID = flight['cid']
             distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
@@ -298,9 +297,13 @@ def airport_details(request, airport_ident):
                 'longitude': flight['longitude'],
             })
 
-    airportName = Airport.objects.get(ident=airport_ident).name
-    airportIdent = Airport.objects.get(ident=airport_ident).ident
-    airportRegion = Airport.objects.get(ident=airport_ident).iso_region
+
+
+    airport = get_object_or_404(Airport, ident=airport_ident)
+
+    airportName = airport.name
+    airportIdent = airport.ident
+    airportRegion = airport.iso_region
     airportLocalTime = get_local_time_from_ident(request, airport_ident)
     
     return JsonResponse({
@@ -517,8 +520,6 @@ def fetch_online_controllers():
     
 
 
-
-# Ensure this map is defined in your code
 DIVISION_TO_REGION_MAP = {
     "PAC": ["Y", "A", "N", "F"],
     "GBR": ["E"],
@@ -646,21 +647,6 @@ def update_vatsim_controllers(request):
 
         backendName = f'{search_ident}_{controller_type}'
         
-        # # Find or create the associated airport
-        # division_tuple = tuple(division.replace(",", ""))  # Remove spaces and commas, then convert to tuple
-        # airports = Airport.objects.filter(ident__endswith=search_ident[-3:]).exclude(type__in=['closed', 'heliport'])
-
-        # query = Q()
-        # for letter in division_tuple:
-        #     query |= Q(ident__startswith=letter)
-        # print(division_tuple)
-
-        # airport = airports.filter(query).first()
-        # if airport is None:
-        #     print(f"No matching airport found for controller {vatsim_id} @ {backendName} with division {division}")
-        #     continue
-
-        # Check if the controller exists
         existing_controller = Controller.objects.filter(name=backendName).first()
         if existing_controller:
             # If the controller exists, update without changing latitude and longitude
@@ -956,15 +942,17 @@ flight_data_cache = {
 flight_data_cache = {
     'data': None,
     'last_updated': 0,
-    'update_interval': 60 # Cache duration in seconds, e.g., 5 minutes
+    'update_interval': 15 # Cache duration in seconds, e.g., 5 minutes
 }
 
 def fetch_flight_data():
     current_time = time.time()
     # Check if the cache is fresh
     if flight_data_cache['data'] is not None and (current_time - flight_data_cache['last_updated']) < flight_data_cache['update_interval']:
+        print("Using cached data.")
         return flight_data_cache['data']
     else:
+        print("Fetching new data.")
         # Define custom headers with a non-generic User-Agent
         response = requests.get("https://data.vatsim.net/v3/vatsim-data.json", headers=headers)
         if response.status_code == 200:

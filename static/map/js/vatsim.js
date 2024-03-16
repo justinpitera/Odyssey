@@ -44,6 +44,7 @@ function updateMapWithPilots(pilots) {
                 name: pilot.name,
                 groundspeed: pilot.groundspeed,
                 altitude: pilot.altitude,
+                callsign: pilot.callsign,
                 heading: getTrueHeading(pilot.heading)
             }
         };
@@ -264,14 +265,12 @@ function drawWaypointsMarkers(waypoints) {
 
 
 function generatePopupContent(pilot) {
-    const vatsimId = pilot.id.replace('pilot-', '');
     return `
-        <h3>Pilot Information</h3>
-        <p><strong>Name:</strong> ${pilot.name}</p>
-        <p><strong>Groundspeed:</strong> ${pilot.groundspeed} knots</p>
+        <h3><b>${pilot.callsign}</b></h3>
+        <p><strong>Captain:</strong> ${pilot.name}</p>
         <p><strong>Altitude:</strong> ${pilot.altitude} feet</p>
+        <p><strong>Groundspeed:</strong> ${pilot.groundspeed} knots</p>
         <p><strong>Heading:</strong> ${pilot.heading}°</p>
-        <p><strong>VATSIM ID:</strong> ${vatsimId}</p> <!-- Extracted from the pilot ID ; For testing purposes, remove later *** -->
     `;
 }
 

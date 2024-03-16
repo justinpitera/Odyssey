@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 resultsDiv.style.display = 'none'; // Hide the results div
                 if (firstResult.lat && firstResult.lon) {
                     zoomToLocation(firstResult.lat, firstResult.lon); 
-                    fetchAirportDetails(firstResult.ident);// Zoom to the first search result location
+                    
                 }
             }
             return; // Prevent further execution when Enter is pressed
