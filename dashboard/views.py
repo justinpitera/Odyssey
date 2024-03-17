@@ -3,11 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 
 def dashboard(request):
-    page_title = 'Dashboard - Odyssey'
+    page_title = 'Simtrail - A revolutionary flight tracker for virtual pilots.'
     context = {
         'page_title': page_title,
     }
     return render(request, 'dashboard/dashboard.html', context)
+
+def roadmap(request):
+    page_title = 'Roadmap - Simtrail'
+    context = {
+        'page_title': page_title,
+    }
+    return render(request, 'dashboard/roadmap.html', context)
 
 
 from django.http import HttpResponse

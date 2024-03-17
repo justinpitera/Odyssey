@@ -20,6 +20,16 @@
 }
 
 
+@media screen and (max-width: 768px) {
+  .contact-section {
+      margin-bottom: 2rem; /* Adjusts spacing before the footer */
+  }
+  
+  footer {
+      clear: both; /* Ensures footer is clearly separated from the content above */
+      position: relative; /* Adjust as needed, could be static, relative, or even absolute with more control */
+  }
+}
 
 
   /* Base styles for scroll snap, applied to all devices by default */

@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime, timedelta
+import json
 import os
 from xml.etree import ElementTree
 from django.http import HttpResponse, JsonResponse
@@ -1093,4 +1094,69 @@ def get_remaining_distance(request, cid, vatsim_data):
         remaining_percentage = (remaining_distance / total_distance) * 100
     else:
         remaining_percentage = 0
-    return remaining_percentage
+    return remaining_percentage\
+
+
+
+# Assuming the existence of a global dictionary to store the last known data
+# This dictionary should be accessible wherever your fetch_ivao_network function is defined
+last_known_data = {}
+
+import time  # Import time module for timestamp functionality
+
+def fetch_ivao_network(request):
+    # The cache key for storing/retrieving the data
+    cache_key = 'ivao_pilots_data_simplified'
+    # Time to live for the cache in seconds
+    cache_ttl = 45
+
+    # Try fetching from cache first
+    cache_response = cache.get(cache_key)
+    cached_data = cache_response.get('data') if cache_response else None
+    cached_time = cache_response.get('timestamp') if cache_response else None
+
+    # Check if cached data is still within TTL
+    if cached_data and cached_time and (time.time() - cached_time) < cache_ttl:
+        print("Using cached data.")
+        return JsonResponse({'pilots': cached_data}, safe=False)
+
+    try:
+        # The IVAO API base URL, endpoint, and full URL
+        base_url = 'https://api.ivao.aero/'
+        endpoint = 'v2/tracker/now/pilots'
+        url = f"{base_url}{endpoint}"
+        
+        # Make the request
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            # Parse the JSON response and extract/transform the data
+            original_data = response.json()
+            simplified_data = [{
+                'userId': pilot.get('userId'),
+                'latitude': pilot.get('lastTrack', {}).get('latitude'),
+                'longitude': pilot.get('lastTrack', {}).get('longitude'),
+                'heading': pilot.get('lastTrack', {}).get('heading'),
+                'altitude': pilot.get('lastTrack', {}).get('altitude'),
+                'speed': pilot.get('lastTrack', {}).get('groundSpeed'),
+            } for pilot in original_data]
+
+            # Cache the simplified data with a timestamp
+            cache.set(cache_key, {'data': simplified_data, 'timestamp': time.time()}, cache_ttl)
+
+            # Optionally update last known data
+            global last_known_data
+            last_known_data = simplified_data.copy()
+
+            print("Fetched new data.")
+            return JsonResponse({'pilots': simplified_data}, safe=False)
+        else:
+            raise Exception("Failed to fetch data due to unsuccessful status code.")
+    except Exception as e:
+        if last_known_data:
+            print(f"Using last known data due to error: {e}")
+            return JsonResponse({'pilots': last_known_data}, safe=False)
+        else:
+            print(f"Failed to fetch new data and no cached or last known data is available. Error: {e}")
+            return JsonResponse({'error': 'Failed to fetch data from IVAO and no cached or last known data is available'}, status=500)
+

@@ -130,6 +130,18 @@ body, html {
     animation: popOut 0.5s forwards;
 }
 
+
+
+/* For desktop */
+#search-bar {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+}
+
+
 #search-input:focus {
     border-color: rgb(17,24,39); /* Change this color to match your site's theme */
 }
@@ -144,7 +156,7 @@ body, html {
 
 @media (max-width: 600px) {
     #search-input {
-        width: 250px; /* Smaller width on smaller screens */
+        width: 50px; /* Smaller width on smaller screens */
     }
 }
 

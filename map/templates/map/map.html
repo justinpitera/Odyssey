@@ -39,14 +39,15 @@
         <script>
             const placeholders = [
                 "Search for airports...",
-                "Search for helipads...",
                 "Search for waypoints...",
                 "Search by flight number...",
                 "Search by username...",
                 "Search by aircraft type...",
+                "Search by pilot name...",
                 "Search by frequency...",
                 "Search by tower name...",
                 "Search by VATSIM CID...",
+                "Search by IVAO ID...",
             ];
         
             const searchInput = document.getElementById("search-input");
@@ -156,24 +157,21 @@
             </div>
             </div>
         </div>
-    
+        
             <!-- Wrap toolbar and filters menu in a container -->
     <div style="position: absolute; bottom: 25px; right: 20px; z-index: 1000; display: flex;">
         <!-- Map toolbar -->
         <div id="map-toolbar" class="flex m-2">
             <select id="styleSelector" class="toolbar-select">
-                <option value="mapbox://styles/mapbox/streets-v11">Streets</option>
-                <option value="mapbox://styles/mapbox/outdoors-v11">Outdoors</option>
-                <option value="mapbox://styles/mapbox/light-v10">Light</option>
                 <option value="mapbox://styles/mapbox/dark-v10" selected>Dark</option>
+                <option value="mapbox://styles/mapbox/light-v10">Light</option>
                 <option value="mapbox://styles/mapbox/satellite-v9">Satellite</option>
-                <option value="mapbox://styles/mapbox/satellite-streets-v11">Satellite Streets</option>
             </select>
+            <button id="rc-btn" class="toolbar-btn">
+                <i class="fa-solid fa-gamepad"></i>
+            </button>
             <button id="toggle-rotation" class="toolbar-btn">
                 <i class="fa-solid fa-magnifying-glass-arrows-rotate"></i>
-            </button>
-            <button class="toolbar-btn">
-                <i class="fa-solid fa-layer-group"></i>
             </button>
             <button id="filters-btn" class="toolbar-btn">
                 <i class="fas fa-filter"></i>
@@ -186,10 +184,13 @@
             <div class="flex flex-col">
                 <span class="font-medium mb-1">Aircraft</span>
                 <label class="inline-flex items-center mb-1">
-                    <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600"><span class="ml-2">Vatsim Aircraft</span>
+                    <input id="simtrailFilter" type="checkbox" class="form-checkbox h-5 w-5 text-blue-600"><span class="ml-2">Simtrail Aircraft</span>
                 </label>
                 <label class="inline-flex items-center mb-1">
-                    <input type="checkbox" class="form-checkbox h-5 w-5 text-blue-600"><span class="ml-2">Simtrail Aircraft</span>
+                    <input id="vatsimFilter" type="checkbox" class="form-checkbox h-5 w-5 text-blue-600"><span class="ml-2">Vatsim Aircraft</span>
+                </label>
+                <label class="inline-flex items-center mb-1">
+                    <input id="ivaoFilter" type="checkbox" class="form-checkbox h-5 w-5 text-blue-600"><span class="ml-2">IVAO Aircraft</span>
                 </label>
                 
                 <span class="font-medium mt-3 mb-1">Locations</span>
@@ -212,7 +213,7 @@
 
         <div id="map"></div>
         <div style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
-            <a href="{% url 'dashboard' %}" style="margin-left: 5px; color: white; text-shadow: 3px 3px 5px rgba(0,0,0,0.5);">Simtrail</a>
+            <a href="{% url 'dashboard' %}#hero-card" style="margin-left: 5px; color: white; text-shadow: 3px 3px 5px rgba(0,0,0,0.5);">Simtrail</a>
         </div>
 
 
@@ -252,55 +253,79 @@
                     'intensity': 0.3
                 });
             });
+            document.addEventListener('DOMContentLoaded', function() {
+                var savedStyle = localStorage.getItem('mapStyle');
+                if (savedStyle) {
+                    // Set the map style to the saved value
+                    map.setStyle(savedStyle);
+            
+                    // Change the dropdown to match the saved style
+                    var styleSelector = document.getElementById('styleSelector');
+                    styleSelector.value = savedStyle;
+            
+                    // Depending on how your setup functions work, you might need to call them here.
+                    // For example, if they depend on the map style being set, and don't handle the style.load event internally.
+                    // drawWaypointsAndRoute();
+                    // startImage();
+                    // startIVAOImage();
+                    // Note: Ensure these functions can handle being called here without causing issues when the map style changes.
+                }
+            });
+            
 
-            document.getElementById('styleSelector').addEventListener('change', function() {
-                var selectedStyle = this.value;
-                map.setStyle(selectedStyle);
+        document.getElementById('styleSelector').addEventListener('change', function() {
+            var selectedStyle = this.value;
+            map.setStyle(selectedStyle);
 
-                // Because setStyle will remove and re-add all layers/sources, wait for the style to load before re-adding them
-                map.once('style.load', () => {
-                    // Ensure this function can handle being called multiple times
-                    drawWaypointsAndRoute();
-                    
-                    startImage();
-                    
-                    
-                    // Reapply fog, light, and atmosphere settings since setStyle removes them
-                    map.setFog({
-                        'range': [0, 1.5],
-                        'color': '#4e4e52',
-                        'horizon-blend': 0.04,
-                    });
+            // Save the selected style to local storage
+            localStorage.setItem('mapStyle', selectedStyle);
 
-                    map.setLight({
-                        'anchor': 'viewport',
-                        'color': '#8899AA',
-                        'intensity': 0.3
-                    });
-
-                    if (!map.getAtmosphere()) {
-                        map.setAtmosphere({
-                            'skyType': 'atmosphere',
-                            'skyAtmosphereColor': '#000000',
-                            'skyAtmosphereSun': [0.0, 0.0],
-                            'skyAtmosphereSunIntensity': 15
-                        });
-                    }
-
+            // Because setStyle will remove and re-add all layers/sources, wait for the style to load before re-adding them
+            map.once('style.load', () => {
+                // Ensure this function can handle being called multiple times
+                drawWaypointsAndRoute();
+                
+                startImage();
+                startIVAOImage();
+                
+                // Reapply fog, light, and atmosphere settings since setStyle removes them
+                map.setFog({
+                    'range': [0, 1.5],
+                    'color': '#4e4e52',
+                    'horizon-blend': 0.04,
                 });
 
+                map.setLight({
+                    'anchor': 'viewport',
+                    'color': '#8899AA',
+                    'intensity': 0.3
+                });
+
+                if (!map.getAtmosphere()) {
+                    map.setAtmosphere({
+                        'skyType': 'atmosphere',
+                        'skyAtmosphereColor': '#000000',
+                        'skyAtmosphereSun': [0.0, 0.0],
+                        'skyAtmosphereSunIntensity': 15
+                    });
+                }
+
             });
+
+        });
+
         </script>
 
+
+        <script src="{% static 'map/js/vatsim.js' %}"></script>
         <script type="module" src="{% static 'map/js/control.js' %}"></script>
-        
         <script src="{% static 'map/js/airports.js' %}"></script>
         <script src="{% static 'map/js/filters.js' %}"></script>
         <script src="{% static 'map/js/aircraft.js' %}"></script>
         <script src="{% static 'map/js/waypoints.js' %}"></script>
         <script src="{% static 'map/js/search.js' %}"></script>
         <script src="{% static 'map/js/window.js' %}"></script>
-        <script src="{% static 'map/js/vatsim.js' %}"></script>
+        <script src="{% static 'map/js/ivao.js' %}"></script>
         <script src="{% static 'map/js/cardControl.js' %}"></script>
         
         <script>

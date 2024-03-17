@@ -14,6 +14,33 @@ let currentSelectedPilotId = null; // Tracks the currently selected VATSIM user
 
 const vatsimWaypointMarkers = []; // Track waypoint markers for removal
 
+
+
+
+function setCookie(name, value, days) {
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days*24*60*60*1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+}
+
+function getCookie(name) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0;i < ca.length;i++) {
+        var c = ca[i];
+        while (c.charAt(0)==' ') c = c.substring(1,c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+    }
+    return null;
+}
+
+
+
+
 function fetchAndUpdatePilotsDirectly() {
     fetch('/map/api/fetch_flight_data/')  // URL to your Django view
         .then(response => response.json())
@@ -273,17 +300,45 @@ function generatePopupContent(pilot) {
         <p><strong>Heading:</strong> ${pilot.heading}°</p>
     `;
 }
+document.addEventListener('DOMContentLoaded', function() {
+    const vatsimCheckbox = document.getElementById('vatsimFilter');
+
+    // Set checkbox state from cookie on page load
+    vatsimCheckbox.checked = getCookie('vatsimFilterEnabled') === 'true';
+
+    // Add event listener to the VATSIM filter checkbox
+    vatsimCheckbox.addEventListener('change', function() {
+        setCookie('vatsimFilterEnabled', this.checked, 7); // Save state for 7 days
+        
+        if (this.checked) {
+            updatePilots(); // Call your function to show VATSIM data
+        } else {
+            removeVATSIMDataFromMap(); // Call your function to hide VATSIM data
+        }
+    });
+
+        // Update pilots every 15 seconds
+        setInterval(updatePilots, 15000);
 
 
-// Update pilots every 15 seconds
-setInterval(updatePilots, 15000);
 
-
-
-map.on('load', function() {
-    startImage();
+        map.on('load', function() {
+            startImage();
+        });
 });
- 
+
+ function removeVATSIMDataFromMap() {
+    // Example: Removing the VATSIM layer and source from the map
+    if (map.getSource('vatsim')) {
+        map.removeLayer('vatsim-markers');
+        map.removeSource('vatsim');
+    }
+
+    // Additionally, remove any standalone markers if applicable
+    Object.values(vatsimMarkers).forEach(marker => marker.remove());
+    // Reset or clear any other relevant variables here
+}
+
 
 
 

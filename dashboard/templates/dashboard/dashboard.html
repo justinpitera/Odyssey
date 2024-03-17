@@ -4,107 +4,85 @@
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'dashboard/css/styles.css' %}">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 
 <section class="min-h-screen flex flex-col items-center justify-between bg-gradient-to-r from-indigo-800 to-indigo-900 text-white hero" id="hero-card">
-    <div class="text-center">
-        <h1 class="text-6xl font-bold mb-4 text-shadow">A Revolutionary Flight Tracker</h1>
-        <p class="mb-8 text-lg text-indigo-200">Simtrail offers a streamlined flight tracking experience with the added convenience of <b>remote control</b> features for your flights.</p>
-        
-         <a href="#explore-service" class="bg-white text-indigo-700 px-5 py-3 rounded-full font-semibold transition-colors hover:bg-indigo-100 mt-8">Learn More</a>
-        <!-- New Section for Logos -->
-        <div class="mb-8 mt-20">
-            <p class="text-xl mb-4">Supports:</p>
-            <div class="flex justify-center items-center space-x-4">
-                <img src="{% static 'images/msfs.png' %}" alt="Microsoft Flight Simulator" class="w-24 h-12 object-contain"  style="filter: grayscale(100%);">
-                <img src="{% static 'images/xplane.png' %}" alt="X-Plane" class="w-24 h-12 object-contain" style="filter: grayscale(100%);">
-                <img src="{% static 'images/p3d.png' %}" alt="Prepar3D" class="w-24 h-12 object-contain"  style="filter: grayscale(100%);">
-
-            </div>
-        </div>
-        
-       
-    </div>
-    <div class="scroll-icon pb-4 mb-10">
-        <a href="#explore-service"><i class="fa-regular fa-computer-mouse-scrollwheel text-white"></i></a>
-    </div>
+  <div class="text-center">
+      <h1 class="text-5xl font-bold mb-4 text-shadow">A Revolutionary Flight Tracker</h1>
+      <p class="mb-8 text-lg text-indigo-200 mt-5">Simtrail offers a streamlined flight tracking experience with the added convenience of <b>remote control</b> features for your flights.</p>
+      <a href="#explore-service" class="bg-white text-indigo-700 px-5 py-3 rounded-full font-semibold transition-colors hover:bg-indigo-100 mt-5">Learn More</a>
+  </div>
+  <div class="scroll-icon pb-4 mb-10">
+      <a href="#explore-service"><i class="fa-regular fa-computer-mouse-scrollwheel text-white"></i></a>
+  </div>
 </section>
 
-<section class="bg-gray-800 text-white text-white py-20 shadow-lg" id="explore-service" >
-    <div class="container mx-auto px-4">
-        <div class="container mx-auto px-4">
-          <div class="text-center mb-20 mt-10"> 
-            <h2 class="text-5xl font-bold mb-4">Explore Our Service</h2>
-            <p class="text-xl mb-8">Discover how we can redefine your aviation experience.</p>
-          </div>
-        
-        <div class="flex flex-wrap mb-16 items-center justify-between">
-          <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0 relative">
-            <div class="absolute left-0 top-0 h-full border-l-4 border-gray-400 pl-4">
-            </div>
-            <div class="pl-10">
-              <h3 class="text-3xl font-semibold mb-3">1. Flight Tracking</h3>
-              <p class="text-lg mb-4">Keep tabs on your flights with our advanced tracking system. Whether it's monitoring current flights, revisiting past ones, or tracking activity on Simtrail and VATSIM networks, stay informed at all times.</p>
-            </div>
-          </div>
-          <div class="w-full lg:w-1/2 px-4">
-            <img src="{% static 'images/feature-tracking.png' %}" class="rounded-lg">
-          </div>
-        </div>
-
-        
-          <!-- Flight Control -->
-          <div class="flex flex-wrap mb-16 items-center justify-between flex-row-reverse">
-            <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0 relative">
-              <div class="absolute right-0 top-0 h-full border-r-4 border-gray-400 pr-4">
-              </div>
-              <div class="pr-10">
-                <h3 class="text-3xl font-semibold mb-3">2. Remote Flight Control</h3>
-                <p class="text-lg mb-4">Manage your aircraft's parameters remotely. From altitude adjustments to speed, heading changes, and even pausing at critical moments, gain unparalleled control with Simtrail.</p>
-              </div>
-            </div>
-            <div class="w-full lg:w-1/2 px-4">
-              <img src="{% static 'images/feature-rc.png' %}" class="rounded-lg">
-            </div>
-          </div>
-
-        
-              <!-- Virtual Airlines -->
-              <div class="flex flex-wrap mb-16 items-center justify-between">
-                <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0 relative">
-                  <div class="absolute left-0 top-0 h-full border-l-4 border-gray-400 pl-4">
-                  </div>
-                  <div class="pl-10">
-                    <h3 class="text-3xl font-semibold mb-3">3. Create Virtual Airlines</h3>
-                    <p class="text-lg mb-4">Launch your very own virtual airline and invite friends to join. Customize your fleet and operations to build a unique aviation community.</p>
-                  </div>
-                </div>
-                <div class="w-full lg:w-1/2 px-4">
-                  <img src="path/to/your/virtual-airlines-image.jpg" alt="Virtual Airlines" class="rounded-lg">
-                </div>
-              </div>
-
-              <!-- Competition -->
-              <div class="flex flex-wrap items-center justify-between flex-row-reverse">
-                <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0 relative">
-                  <div class="absolute right-0 top-0 h-full border-r-4 border-gray-400 pr-4"> <!-- Note the right alignment for reverse row -->
-                  </div>
-                  <div class="pr-10"> <!-- Adjust padding for right alignment -->
-                    <h3 class="text-3xl font-semibold mb-3">4. Engage in Competitions</h3>
-                    <p class="text-lg mb-4">Compete against friends and other airlines in a dynamic leaderboard. Showcase your strategic prowess and climb to the top with your airline.</p>
-                  </div>
-                </div>
-                <div class="w-full lg:w-1/2 px-4">
-                  <img src="path/to/your/competition-image.jpg" alt="Competition" class="rounded-lg">
-                </div>
-              </div>
-
+<section class="bg-gray-900 text-white py-20 shadow-lg" id="explore-service">
+<div class="container mx-auto px-4">
+    <div class="text-center mb-20 mt-8">
+        <h2 class="text-5xl font-bold mb-4">Explore Our Service</h2>
+        <p class="text-xl">Discover how we can redefine your aviation experience.</p>
     </div>
+
+    <!-- Service 1: Flight Tracking -->
+    <div class="flex flex-wrap mb-16 items-center">
+        <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+            <h3 class="text-3xl font-semibold mb-3">1. Flight Tracking</h3>
+            <p class="text-lg">Keep tabs on your flights with our advanced tracking system. Whether it's monitoring current flights, revisiting past ones, or tracking activity on Simtrail, VATSIM, and IVAO networks, stay informed at all times.</p>
+        </div>
+        <div class="w-full lg:w-1/2 px-4">
+            <img src="{% static 'images/feature-tracking.png' %}" alt="Flight Tracking" class="rounded-lg border-2 border-white">
+        </div>
+    </div>
+
+    <!-- Service 2: Remote Flight Control -->
+    <div class="flex flex-wrap mb-16 items-center flex-row-reverse">
+        <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+            <h3 class="text-3xl font-semibold mb-3">2. Remote Flight Control</h3>
+            <p class="text-lg">Manage your aircraft's parameters remotely. From altitude adjustments to speed, heading changes, and even pausing at critical moments, gain unparalleled control with Simtrail.</p>
+        </div>
+        <div class="w-full lg:w-1/2 px-4">
+            <img src="{% static 'images/feature-rc.png' %}" alt="Remote Control" class="rounded-lg border-2 border-white">
+        </div>
+    </div>
+
+    {% comment %} <!-- Service 3: Virtual Airlines -->
+    <div class="flex flex-wrap mb-16 items-center">
+        <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+            <h3 class="text-3xl font-semibold mb-3">3. Create Virtual Airlines</h3>
+            <p class="text-lg">Launch your very own virtual airline and invite friends to join. Customize your fleet and operations to build a unique aviation community. Dive into a simulated market, navigating the complexities of passenger and freight demands across diverse destinations. Strategize and expand your reach in a dynamic environment, where every decision can lead to new opportunities.</p>
+        </div>
+        <div class="w-full lg:w-1/2 px-4">
+            <img src="path/to/your/virtual-airlines-image.jpg" alt="Virtual Airlines" class="rounded-lg border-2 border-white">
+        </div>
+    </div>
+
+    <!-- Service 4: Competition -->
+    <div class="flex flex-wrap mb-16 items-center flex-row-reverse">
+        <div class="w-full lg:w-1/2 px-4 mb-6 lg:mb-0">
+            <h3 class="text-3xl font-semibold mb-3">4. Engage in Competitions</h3>
+            <p class="text-lg">Compete against friends and other airlines in a dynamic leaderboard. Showcase your strategic prowess and climb to the top with your airline.</p>
+        </div>
+        <div class="w-full lg:w-1/2 px-4">
+            <img src="path/to/your/competition-image.jpg" alt="Competition" class="rounded-lg border-2 border-white">
+        </div>
+    </div> {% endcomment %}
+    <!-- Placeholder for upcoming features -->
+  <div class="bg-gray-800 text-white py-16 rounded-lg shadow-inner text-center my-16">
+    <h3 class="text-4xl font-semibold mb-3">More Features Coming Soon!</h3>
+    <p class="text-lg mb-6">Stay tuned for exciting new services designed to enhance your aviation experience even further.</p>
+    <a href="{% url 'roadmap' %}" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 px-4 rounded-full transition-colors">View Our Roadmap</a>
+  </div>
+
+</div>
 </section>
-<section class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-800 to-indigo-900 text-white py-12 px-4">
+
+
+<section class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-800 to-indigo-900 text-white py-12 px-4 contact-section">
     <div class="text-center max-w-2xl mb-6 mt-10"> <!-- Reduced bottom margin -->
         <h2 class="text-4xl sm:text-5xl font-bold mb-4">Contact Us</h2> <!-- Reduced bottom margin -->
-        <p class="text-lg sm:text-xl mb-6">Simtrail is community-driven, and we're eager to hear from you. Your feedback and ideas are what help us grow and improve.</p> <!-- Adjusted bottom margin for compact spacing -->
+        <p class="text-lg sm:text-xl mb-6">Simtrail is <b>community-driven</b>, and we're eager to hear from you. Your feedback and ideas are what help us grow and improve.</p> <!-- Adjusted bottom margin for compact spacing -->
     </div>
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2 max-w-4xl w-full"> <!-- Reduced gap for tighter layout -->
         <div class="space-y-6">
@@ -139,11 +117,9 @@
        
     <footer class="w-full text-center text-white py-4 mt-10">
         <div class="max-w-4xl mx-auto flex justify-center space-x-4">
-            <!-- Social Media Icons -->
             <a href="#" class="hover:text-indigo-300 transition-colors"><i class="fab fa-facebook-f"></i></a>
-            <a href="#" class="hover:text-indigo-300 transition-colors"><i class="fab fa-twitter"></i></a>
+            <a href="#" class="hover:text-indigo-300 transition-colors"><i class="fab fa-x-twitter"></i></a>
             <a href="#" class="hover:text-indigo-300 transition-colors"><i class="fab fa-instagram"></i></a>
-            <a href="#" class="hover:text-indigo-300 transition-colors"><i class="fab fa-linkedin-in"></i></a>
         </div>
         <div class="mt-4">
             © 2024 Simtrail. All rights reserved.
