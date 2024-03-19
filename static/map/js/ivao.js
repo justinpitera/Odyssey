@@ -29,15 +29,33 @@ function updateMapWithIVAOPilots(pilots) {
     pilots.forEach(pilot => {
         const pilotId = `ivao-pilot-${pilot.userId}`;
         const markerLngLat = [pilot.longitude, pilot.latitude];
+        // Format the popup content
+        const popupContent = `
+            <strong>Callsign:</strong> ${pilot.callsign}<br>
+            <strong>Speed:</strong> ${pilot.speed} knots<br>
+            <strong>Altitude:</strong> ${pilot.altitude} feet
+        `;
 
         if (!ivaoMarkers[pilotId]) {
             const el = document.createElement('div');
             el.className = 'ivao-marker';
-            ivaoMarkers[pilotId] = new mapboxgl.Marker(el)
+
+            // Create a popup for this marker
+            const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent);
+
+            // Create the marker and attach the popup
+            const marker = new mapboxgl.Marker(el)
                 .setLngLat(markerLngLat)
+                .setPopup(popup) // Attach the popup here
                 .addTo(map);
+
+            // Store the marker in the ivaoMarkers object
+            ivaoMarkers[pilotId] = marker;
         } else {
+            // Marker already exists, just update its position
             ivaoMarkers[pilotId].setLngLat(markerLngLat);
+            // Also update the popup content
+            ivaoMarkers[pilotId].getPopup().setHTML(popupContent);
         }
 
         ivaoGeoJSON[pilotId] = {
@@ -49,15 +67,16 @@ function updateMapWithIVAOPilots(pilots) {
             properties: {
                 id: pilotId,
                 icon: 'ivao-icon',
-                name: pilotId,
+                name: pilot.callsign, // Use the callsign as the name
                 groundspeed: pilot.speed,
                 altitude: pilot.altitude,
-                callsign: pilotId,
+                callsign: pilot.callsign,
                 heading: getTrueHeading(pilot.heading)
             }
         };
     });
 
+    // Update or create the GeoJSON source for the markers
     if (map.getSource('ivao')) {
         map.getSource('ivao').setData({
             type: 'FeatureCollection',
@@ -86,10 +105,12 @@ function updateMapWithIVAOPilots(pilots) {
     }
 }
 
+
+
 // Assuming getTrueHeading is defined similarly and can be shared or duplicated
 
 const ivaoIconId = 'ivao-icon';
-const ivaoImageUrl = '/static/images/location-arrow-ivao.png';
+const ivaoImageUrl = '/static/images/location-arrow-ivaoNetwork.png';
 
 function startIVAOImage() {
     if (!map.hasImage(ivaoIconId)) {

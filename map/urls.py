@@ -24,7 +24,8 @@ from .views import (
     get_remaining_distance,
     import_airline_data,
     fetch_vatsim_flight_data,
-    fetch_ivao_network
+    fetch_ivao_network,
+    get_remaining_distance
 )
 
 urlpatterns = [

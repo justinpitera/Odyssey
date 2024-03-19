@@ -1,6 +1,7 @@
 const aircraftMarkers = {};
 let playerAircraftAdded = false;
 var userId = document.body.getAttribute('data-user-id');
+let playerAircraftTrail = [];
 
 
 function updateAircraftPositions() {
@@ -71,7 +72,14 @@ function updateExistingMarker(markerObj, position) {
   if (markerObj.marker.getPopup()) { // Check if the marker has a popup
     markerObj.marker.getPopup().setHTML(getPopupContent(position));
   }
+
+  // If this marker is the player's aircraft, update the trail
+  if (markerObj.isPlayer) {
+    playerAircraftTrail.push([position.longitude, position.latitude]);
+    drawPlayerAircraftTrail();
+  }
 }
+
 
 function updateIconRotation(el, aircraftHeading) {
   // Get the current bearing of the map
@@ -103,7 +111,14 @@ function addNewMarker(position, isPlayerAircraft = false) {
 
   // Initial rotation adjustment
   updateIconRotation(el, position.heading);
+
+  // If this is the player's aircraft, add its position to the trail and draw/update the trail
+  if (isPlayerAircraft) {
+    playerAircraftTrail.push([position.longitude, position.latitude]);
+    drawPlayerAircraftTrail();
+  }
 }
+
 
 
 
@@ -202,3 +217,43 @@ map.on('rotate', () => {
     }
   });
 });
+
+
+function drawPlayerAircraftTrail() {
+  if (playerAircraftTrail.length > 1) { // Need at least two points to draw a line
+    if (map.getSource('playerTrail')) {
+      // Update existing line
+      map.getSource('playerTrail').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates: playerAircraftTrail,
+        },
+      });
+    } else {
+      // Add new line
+      map.addSource('playerTrail', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: playerAircraftTrail,
+          },
+        },
+      });
+      map.addLayer({
+        id: 'playerTrail',
+        type: 'line',
+        source: 'playerTrail',
+        layout: {},
+        paint: {
+          'line-color': '#FFA500', // Orange color for the trail
+          'line-width': 2,
+        },
+      });
+    }
+  }
+}

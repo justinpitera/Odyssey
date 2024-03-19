@@ -153,6 +153,50 @@ def generate_schedule(request, user_id):
 
     return redirect('schedule')
 
+@login_required
+def generate_flight(request):
+    # Example data - you can customize this as needed
+    flight_number = f"FL{random.randint(100, 999)}"
+    departure = "Los Angeles International Airport"
+    destination = "John F. Kennedy International Airport"
+    departure_time = timezone.now() + timezone.timedelta(days=1)  # Departure 1 day from now
+    aircraft = "Boeing 737"
+    capacity = 160
+    price = 299.99
+    available_seats = capacity
+    current_altitude = 0
+    target_altitude = 35000  # Example target altitude in feet
+    landing_rate = 0  # Default, assuming flight hasn't landed yet
+    is_active = True
+    completed = False
+    flight_plan = "https://example.com/flightplan"  # Example URL, replace as necessary
+
+    # Create the Flight object
+    flight = Flight(
+        flight_number=flight_number,
+        departure=departure,
+        destination=destination,
+        departure_time=departure_time,
+        aircraft=aircraft,
+        capacity=capacity,
+        price=price,
+        available_seats=available_seats,
+        current_altitude=current_altitude,
+        target_altitude=target_altitude,
+        landing_rate=landing_rate,
+        is_active=is_active,
+        completed=completed,
+        user=request.user,  # Assign the current user
+        flight_plan=flight_plan,
+    )
+
+    # Save the flight to the database
+    flight.save()
+
+    # Redirect to a new URL: you might want to redirect to the flight detail page or somewhere else
+    # return redirect('some-view-name')  # Uncomment and edit this line according to your URL configuration
+    return HttpResponse("Flight created successfully!")  # Simple success message
+
 
 def get_k_airports():
     k_airports = []

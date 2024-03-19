@@ -1,14 +1,29 @@
 self.addEventListener('message', function(e) {
     const { action, mapBounds } = e.data;
     if (action === 'updatePilots') {
-        fetch('/map/api/fetch_flight_data/')
-            .then(response => response.json())
+        // Define both fetch requests
+        const fetchVATSIM = fetch('/map/api/fetch_flight_data/').then(response => response.json());
+        const fetchIVAO = fetch('/map/api/ivao-data/').then(response => response.json());
+
+        // Use Promise.all to wait for both requests to complete
+        Promise.all([fetchVATSIM, fetchIVAO])
             .then(data => {
-                const pilots = data.pilots;
+                // data[0] contains the response from fetchVATSIM
+                // data[1] contains the response from fetchIVAO
+
+                const pilotsVATSIM = data[0].pilots;
+                const pilotsIVAO = data[1].pilots;
+
                 // Process data here (e.g., filter by mapBounds, create SVGs)
-                // For simplicity, we'll just send back the raw pilots data
+                // For simplicity, this example sends back the raw data
+                // Combine or process data as needed
+                const pilots = {
+                    vatsimPilots: pilotsVATSIM,
+                    ivaoPilots: pilotsIVAO
+                };
+
                 self.postMessage({ pilots });
             })
-            .catch(err => console.log('Error fetching VATSIM data:', err));
+            .catch(err => console.log('Error fetching data:', err));
     }
 });

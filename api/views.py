@@ -195,7 +195,7 @@ def validate_user_login(request):
 def update_active_flight_telemetry(request):
     # Find the active flight for the current user
     flight = get_object_or_404(Flight, user=request.user, is_active=True)
-    
+
     # Update fields from request data if they exist
     telemetry_fields = ['aircraft_vertical_speed', 'aircraft_longitude', 'aircraft_latitude', 'aircraft_heading', 'aircraft_ground_speed','current_altitude']
     for field in telemetry_fields:

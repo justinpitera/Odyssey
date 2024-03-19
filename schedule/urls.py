@@ -8,7 +8,7 @@ urlpatterns = [
     path('generate_schedule/<int:user_id>/', generate_schedule, name='generate-schedule'),
     path('api/flight/<int:flight_id>/update_altitude/', update_altitude, name='update-altitude'),
     path('api/flight/<int:flight_id>/update_landing_rate/', update_landing_rate, name='update-landing-rate'),
-    
+    path('api/generate_flight', generate_flight, name='generate-flight'),
     path('generate_and_store_flight_plan/<int:flight_id>', generate_and_store_flight_plan, name='generate_and_store_flight_plan'),
 ]
 

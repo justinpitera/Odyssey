@@ -51,41 +51,76 @@ function fetchAndUpdatePilotsDirectly() {
         .catch(err => console.error('Error fetching VATSIM data from Django view:', err));
 }
 
-
 // Function to update the map with pilots' data
-function updateMapWithPilots(pilots) {
-    pilots.forEach(pilot => {
-        const pilotId = `pilot-${pilot.cid}`;
-        const markerLngLat = [pilot.longitude, pilot.latitude];
+function updateMapWithPilots(data) {
+    console.log(data);
 
-        // Update GeoJSON feature for each pilot
-        const feature = {
-            type: 'Feature',
-            geometry: {
-                type: 'Point',
-                coordinates: markerLngLat
-            },
-            properties: {
-                id: pilotId,
-                icon: iconId, // Use the PNG icon
-                name: pilot.name,
-                groundspeed: pilot.groundspeed,
-                altitude: pilot.altitude,
-                callsign: pilot.callsign,
-                heading: getTrueHeading(pilot.heading)
-            }
-        };
-        // Check if there's an existing popup for this pilot and update it
-        if (activePopups[pilotId]) {
-            const popupContent = generatePopupContent(pilot);
-            activePopups[pilotId].setHTML(popupContent);
-        }
-
-        // Update or add the feature in vatsimGeoJSON object
-        vatsimGeoJSON[pilotId] = feature;
+    // Process VATSIM pilots
+    data.vatsimPilots.forEach(pilot => {
+        // Assuming VATSIM pilots have a consistent structure with your existing code
+        updatePilot(pilot, 'vatsim');
     });
 
-    // Update or add the GeoJSON source for the pilots on the map
+    // Process IVAO pilots
+    data.ivaoPilots.forEach(pilot => {
+        // Adapt for IVAO's different structure
+        updatePilot(pilot, 'ivao');
+    });
+}
+
+// Function to handle individual pilot update or addition
+function updatePilot(pilot, source) {
+    // Use source-specific IDs and property names
+    const pilotId = source === 'vatsim' ? `pilot-${pilot.cid}` : `pilot-${pilot.userId}`;
+    const markerLngLat = [pilot.longitude, pilot.latitude];
+    const groundspeed = source === 'vatsim' ? pilot.groundspeed : pilot.speed; // IVAO uses 'speed'
+    const name = source === 'vatsim' ? pilot.name : `User ${pilot.userId}`; // Example adaptation
+    const callsign = source === 'vatsim' ? pilot.callsign : `IVAO ${pilot.userId}`; // Defaulting for IVAO
+
+    // Update GeoJSON feature for each pilot
+    const feature = {
+        type: 'Feature',
+        geometry: {
+            type: 'Point',
+            coordinates: markerLngLat
+        },
+        properties: {
+            id: pilotId,
+            icon: iconId, // Use the PNG icon, assuming it's defined elsewhere
+            name: name,
+            groundspeed: groundspeed,
+            altitude: pilot.altitude,
+            callsign: callsign,
+            heading: getTrueHeading(pilot.heading) // Assuming this function is defined elsewhere
+        }
+    };
+
+    // Check if there's an existing popup for this pilot and update it
+    if (activePopups[pilotId]) {
+        const popupContent = generatePopupContent(feature.properties);
+        activePopups[pilotId].setHTML(popupContent);
+    }
+
+    // Update or add the feature in vatsimGeoJSON object
+    vatsimGeoJSON[pilotId] = feature;
+
+    // Ensure the map source and layer are updated with the latest features
+    updateMapSource();
+}
+
+// Ensure this function generates the popup content correctly
+function generatePopupContent(properties) {
+    // Adapt this based on your needs
+    return `
+        <h3><b>${properties.callsign}</b></h3>
+        <p><strong>Name:</strong> ${properties.name}</p>
+        <p><strong>Altitude:</strong> ${properties.altitude} feet</p>
+        <p><strong>Groundspeed:</strong> ${properties.groundspeed} knots</p>
+        <p><strong>Heading:</strong> ${properties.heading}°</p>
+    `;
+}
+
+function updateMapSource() {
     if (map.getSource('vatsim')) {
         const source = map.getSource('vatsim');
         source.setData({
@@ -113,6 +148,7 @@ function updateMapWithPilots(pilots) {
         });
     }
 }
+
 
 
 

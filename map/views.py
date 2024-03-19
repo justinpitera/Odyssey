@@ -44,7 +44,7 @@ def aircraft_map(request):
         context = {
             'aircraft': aircraft,
             'userAircraft': userAircraft,
-            'page_title': 'Odyssey Network',
+            'page_title': 'Simtrail Network',
             'userLat': userLat,
             'userLon': userLon
         }
@@ -226,86 +226,79 @@ def get_standard_time_of_arrival(dep_time, enroute_time):
     
     return arrival_normal_time
 
-from django.core.exceptions import ObjectDoesNotExist
+
+
+import time
+from django.http import JsonResponse
+from concurrent.futures import ThreadPoolExecutor
 from django.shortcuts import get_object_or_404
+
+# Assuming these are your custom functions and models
+from .models import Airline, Airport
+
+def process_flight(flight, airport_ident, vatsim_data):
+    if flight['arrival'] == airport_ident or flight['departure'] == airport_ident:
+        loop_start_time = time.time()
+        vatsimID = flight['cid']
+        departureTime = convert_to_normal_time(flight['deptime'])
+        enrouteTime = flight['enroute_time']
+        arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+        distanceRemaining = get_remaining_distance(None, vatsimID, vatsim_data)  # Adjusted for example
+        from django.core.exceptions import ObjectDoesNotExist
+
+        try:
+            airline_query = Airline.objects.filter(icao=flight['callsign'][:3]).only('name')
+            airline = airline_query.first().name if airline_query.exists() else "N/A"
+        except ObjectDoesNotExist:
+            airline = "N/A"
+
+        flight_info = {
+            'callsign': flight['callsign'],
+            'departure': flight['departure'],
+            'arrival': flight['arrival'],
+            'aircraft': flight['aircraft_short'],
+            'cruise_speed': flight['cruise_tas'],
+            'altitude': flight['altitude'],
+            'route': flight['route'],  
+            'departureTime': departureTime,
+            'enrouteTime': enrouteTime,
+            'arrivalTime': arrivalTime,
+            'airline': airline,
+            'latitude': flight['latitude'],
+            'longitude': flight['longitude'],
+            'distanceRemaining': distanceRemaining  # This assumes distanceRemaining is meaningful for both arrivals and departures
+        }
+        print(f"Processed {'an arrival' if flight['arrival'] == airport_ident else 'a departure'} in {time.time() - loop_start_time} seconds")
+        return flight_info
+    return None
+
 def airport_details(request, airport_ident):
     vatsim_data = fetch_flight_data()
     
     if vatsim_data is None:
         return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
     
-    arrivals = []
-    departures = []
+    
+    # Process flights in parallel
+    with ThreadPoolExecutor(max_workers=25) as executor:
+        futures = [executor.submit(process_flight, flight, airport_ident, vatsim_data) for flight in process_flight_data(vatsim_data)]
+        results = [future.result() for future in futures if future.result() is not None]
 
-    for flight in process_flight_data(vatsim_data):
-        if flight['arrival'] == airport_ident:
+    arrivals = [result for result in results if result['arrival'] == airport_ident]
+    departures = [result for result in results if result['departure'] == airport_ident]
 
-
-            vatsimID = flight['cid']
-            departureTime = convert_to_normal_time(flight['deptime'])
-            enrouteTime = flight['enroute_time']
-            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
-            distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
-            try:
-                airline_query = Airline.objects.filter(icao=flight['callsign'][:3]).only('name')
-                airline = airline_query.first().name if airline_query.exists() else "N/A"
-            except ObjectDoesNotExist:
-                airline = "N/A"
-            arrivals.append({
-                'callsign': flight['callsign'],
-                'departure': flight['departure'],
-                'arrival': flight['arrival'],
-                'aircraft': flight['aircraft_short'],
-                'cruise_speed': flight['cruise_tas'],
-                'altitude': flight['altitude'],
-                'route': flight['route'], 
-                'distanceRemaining': distanceRemaining,
-                'departureTime': departureTime,
-                'enrouteTime': enrouteTime,
-                'arrivalTime': arrivalTime,
-                'airline': airline,
-                'latitude': flight['latitude'],
-                'longitude': flight['longitude'],
-            })
-
-        elif flight['departure'] == airport_ident:
-            vatsimID = flight['cid']
-            distanceRemaining = get_remaining_distance(request, vatsimID, vatsim_data)
-            departureTime = convert_to_normal_time(flight['deptime'])
-            enrouteTime = flight['enroute_time']
-            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
-            try:
-                airline_query = Airline.objects.filter(icao=flight['callsign'][:3])
-                airline = airline_query.first().name if airline_query.exists() else "N/A"
-            except ObjectDoesNotExist:
-                # This exception block might not be needed anymore since .filter().first() won't raise ObjectDoesNotExist
-                airline = "N/A"
-
-            departures.append({
-                'callsign': flight['callsign'],
-                'departure': flight['departure'],
-                'arrival': flight['arrival'],
-                'aircraft': flight['aircraft_short'],
-                'cruise_speed': flight['cruise_tas'],
-                'altitude': flight['altitude'],
-                'route': flight['route'],  
-                'distanceRemaining': distanceRemaining,
-                'departureTime': departureTime,
-                'enrouteTime': enrouteTime,
-                'arrivalTime': arrivalTime,
-                'airline': airline,
-                'latitude': flight['latitude'],
-                'longitude': flight['longitude'],
-            })
-
-
-
-    airport = get_object_or_404(Airport, ident=airport_ident)
+    # Fetch the airport details directly without additional overhead
+    try:
+        airport = Airport.objects.only('name', 'ident', 'iso_region').get(ident=airport_ident)
+    except Airport.DoesNotExist:
+        return JsonResponse({'error': 'Airport not found'}, status=404)
 
     airportName = airport.name
     airportIdent = airport.ident
     airportRegion = airport.iso_region
     airportLocalTime = get_local_time_from_ident(request, airport_ident)
+    
+    
     
     return JsonResponse({
         'arrivals': arrivals,
@@ -315,6 +308,7 @@ def airport_details(request, airport_ident):
         'airportRegion': airportRegion,
         'airportLocalTime': airportLocalTime,
     })
+
 
 
 
@@ -1035,6 +1029,7 @@ def process_flight_data(data):
         flights.append(flight_details)
     
     return flights
+import concurrent.futures
 
 
 @require_http_methods(["GET"])
@@ -1057,44 +1052,49 @@ def find_pilot_by_cid(cid, vatsim_data):
 def get_remaining_distance(request, cid, vatsim_data):
     if vatsim_data is None:
         return JsonResponse({"error": "Could not fetch VATSIM data"}, status=500)
-    
+
     pilot_data = find_pilot_by_cid(cid, vatsim_data)
     if pilot_data is None:
         return JsonResponse({"error": "Pilot not found"}, status=404)
-    flight_plan = pilot_data.get('flight_plan', {})  
+
+    flight_plan = pilot_data.get('flight_plan', {})
     route = flight_plan.get('route', '')
-    current_latitude = float(pilot_data.get('latitude', 0)) 
-    current_longitude = float(pilot_data.get('longitude', 0)) 
+    current_latitude = float(pilot_data.get('latitude', 0))
+    current_longitude = float(pilot_data.get('longitude', 0))
 
     waypoints_data = extract_waypoints_from_route(route)
     ordered_waypoints = match_waypoints_in_db(waypoints_data)
+    # Parallelize total distance calculation
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_distance = {
+            executor.submit(haversine, ordered_waypoints[i].longitude_deg, ordered_waypoints[i].latitude_deg, ordered_waypoints[i + 1].longitude_deg, ordered_waypoints[i + 1].latitude_deg): i
+            for i in range(len(ordered_waypoints) - 1)
+        }
+        total_distance = sum(future.result() for future in concurrent.futures.as_completed(future_to_distance))
 
-    # Calculate total distance
-    total_distance = 0
-    for i in range(len(ordered_waypoints) - 1):
-        wp1 = ordered_waypoints[i]
-        wp2 = ordered_waypoints[i + 1]
-        total_distance += haversine(wp1.longitude_deg, wp1.latitude_deg, wp2.longitude_deg, wp2.latitude_deg)
 
-    # Find nearest waypoint to current position and calculate remaining distance
-    remaining_distance = 0
-    nearest_distance = float('inf')
-    for i, wp in enumerate(ordered_waypoints):
-        distance_to_wp = haversine(current_longitude, current_latitude, wp.longitude_deg, wp.latitude_deg)
-        if distance_to_wp < nearest_distance:
-            nearest_distance = distance_to_wp
-            # Calculate remaining distance from this waypoint to the end
-            remaining_distance = sum(haversine(wp.longitude_deg, wp.latitude_deg, ordered_waypoints[j].longitude_deg, ordered_waypoints[j].latitude_deg) for j in range(i, len(ordered_waypoints) - 1))
-            # Include distance from current position to this waypoint if not starting from it
-            if i > 0:
-                remaining_distance += distance_to_wp
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_distance_wp = {
+            executor.submit(haversine, current_longitude, current_latitude, wp.longitude_deg, wp.latitude_deg): wp
+            for wp in ordered_waypoints
+        }
+        nearest_wp, nearest_distance = min(
+            ((wp, future.result()) for future, wp in future_to_distance_wp.items()),
+            key=lambda x: x[1]
+        )
 
-    # Calculate the percentage remaining
-    if total_distance > 0:  # Prevent division by zero
-        remaining_percentage = (remaining_distance / total_distance) * 100
-    else:
-        remaining_percentage = 0
-    return remaining_percentage\
+    # Calculate remaining distance from nearest waypoint
+    remaining_distance = sum(
+        haversine(wp.longitude_deg, wp.latitude_deg, ordered_waypoints[j].longitude_deg, ordered_waypoints[j].latitude_deg)
+        for j, wp in enumerate(ordered_waypoints) if j >= ordered_waypoints.index(nearest_wp)
+    )
+    if ordered_waypoints.index(nearest_wp) > 0:
+        remaining_distance += nearest_distance
+
+    remaining_percentage = (remaining_distance / total_distance) * 100 if total_distance > 0 else 0
+
+    print("Finished calculating distance for ", cid)
+    return remaining_percentage
 
 
 
@@ -1104,11 +1104,17 @@ last_known_data = {}
 
 import time  # Import time module for timestamp functionality
 
+import requests
+import time
+
+# Assuming the existence of a global dictionary to store the last known data
+last_known_data = {}
+
 def fetch_ivao_network(request):
     # The cache key for storing/retrieving the data
     cache_key = 'ivao_pilots_data_simplified'
     # Time to live for the cache in seconds
-    cache_ttl = 45
+    cache_ttl = 15
 
     # Try fetching from cache first
     cache_response = cache.get(cache_key)
@@ -1117,29 +1123,48 @@ def fetch_ivao_network(request):
 
     # Check if cached data is still within TTL
     if cached_data and cached_time and (time.time() - cached_time) < cache_ttl:
-        print("Using cached data.")
         return JsonResponse({'pilots': cached_data}, safe=False)
 
     try:
         # The IVAO API base URL, endpoint, and full URL
         base_url = 'https://api.ivao.aero/'
-        endpoint = 'v2/tracker/now/pilots'
+        endpoint = 'v2/tracker/whazzup'
         url = f"{base_url}{endpoint}"
         
-        # Make the request
+        # Assume 'headers' contains the necessary authentication headers, including OAuth tokens if required
         response = requests.get(url, headers=headers)
 
         if response.status_code == 200:
-            # Parse the JSON response and extract/transform the data
+            # Parse the JSON response
             original_data = response.json()
-            simplified_data = [{
-                'userId': pilot.get('userId'),
-                'latitude': pilot.get('lastTrack', {}).get('latitude'),
-                'longitude': pilot.get('lastTrack', {}).get('longitude'),
-                'heading': pilot.get('lastTrack', {}).get('heading'),
-                'altitude': pilot.get('lastTrack', {}).get('altitude'),
-                'speed': pilot.get('lastTrack', {}).get('groundSpeed'),
-            } for pilot in original_data]
+            clients_data = original_data.get('clients', [])
+            pilots_data = clients_data.get('pilots',[])
+            print(pilots_data)
+            # Filter or process to get only pilot data, adjust according to the actual data structure
+            # This is an assumed structure; you'll need to adapt it based on the actual API response
+            simplified_data = []
+
+            for pilot in pilots_data:
+                if pilot is None:
+                    continue
+
+                last_track = pilot.get('lastTrack', {})
+                
+                flight_plan = pilot.get('flightPlan', {})
+
+                departure_city = flight_plan.get('departureId', {}) if isinstance(flight_plan, dict) else {}
+                
+
+                simplified_data.append({
+                    'userId': pilot.get('userId'),
+                    'latitude': last_track.get('latitude') if isinstance(last_track, dict) else None,
+                    'longitude': last_track.get('longitude') if isinstance(last_track, dict) else None,
+                    'heading': last_track.get('heading') if isinstance(last_track, dict) else None,
+                    'altitude': last_track.get('altitude') if isinstance(last_track, dict) else None,
+                    'speed': last_track.get('groundSpeed') if isinstance(last_track, dict) else None,
+                    'departure': departure_city,
+                })
+
 
             # Cache the simplified data with a timestamp
             cache.set(cache_key, {'data': simplified_data, 'timestamp': time.time()}, cache_ttl)
@@ -1148,15 +1173,12 @@ def fetch_ivao_network(request):
             global last_known_data
             last_known_data = simplified_data.copy()
 
-            print("Fetched new data.")
             return JsonResponse({'pilots': simplified_data}, safe=False)
         else:
             raise Exception("Failed to fetch data due to unsuccessful status code.")
     except Exception as e:
         if last_known_data:
-            print(f"Using last known data due to error: {e}")
             return JsonResponse({'pilots': last_known_data}, safe=False)
         else:
             print(f"Failed to fetch new data and no cached or last known data is available. Error: {e}")
             return JsonResponse({'error': 'Failed to fetch data from IVAO and no cached or last known data is available'}, status=500)
-
