@@ -79,7 +79,7 @@
 </section>
 
 
-<section class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-800 to-indigo-900 text-white py-12 px-4 contact-section">
+<section class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-r from-indigo-800 to-indigo-900 text-white py-12 px-4 contact-section" id="contact-card">
     <div class="text-center max-w-2xl mb-6 mt-10"> <!-- Reduced bottom margin -->
         <h2 class="text-4xl sm:text-5xl font-bold mb-4">Contact Us</h2> <!-- Reduced bottom margin -->
         <p class="text-lg sm:text-xl mb-6">Simtrail is <b>community-driven</b>, and we're eager to hear from you. Your feedback and ideas are what help us grow and improve.</p> <!-- Adjusted bottom margin for compact spacing -->
@@ -96,7 +96,8 @@
         <div class="space-y-6">
             <div class="bg-white text-indigo-800 rounded-lg p-6 sm:p-8">
                 <h3 class="text-2xl sm:text-3xl font-bold mb-4">Contact Us Directly</h3>
-                <form action="#" method="post">
+                <form action="{% url 'contact' %}" method="post">
+                    {% csrf_token %}
                     <div class="mb-4">
                         <label for="name" class="block text-sm font-medium">Your Name</label>
                         <input type="text" id="name" name="name" class="mt-1 p-2 w-full rounded-md border border-gray-300 focus:border-indigo-500 focus:ring focus:ring-indigo-500 focus:ring-opacity-50">
@@ -112,7 +113,7 @@
                     <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full font-semibold transition duration-150 ease-in-out shadow-lg transform hover:-translate-y-1">Send Message</button>
                 </form>
             </div>
-        </div>
+        </div>            
     </div>
        
     <footer class="w-full text-center text-white py-4 mt-10">

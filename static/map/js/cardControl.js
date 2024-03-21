@@ -1,39 +1,48 @@
-// Initialize variables to keep track of mouse positions
-let offsetX, offsetY;
+
 
 // Function to handle mouse down event on the draggable handle
-function dragMouseDown(event) {
+function dragMouseDown(event, elementId) {
     event.preventDefault();
-    // Get the current mouse position
-    offsetX = event.clientX;
-    offsetY = event.clientY;
+    let element = document.getElementById(elementId);
+    
+    // Initialize variables to keep track of mouse positions within the closure
+    let offsetX = event.clientX;
+    let offsetY = event.clientY;
+
+    // Function to handle mouse move event while dragging
+    function elementDrag(event) {
+        event.preventDefault();
+        // Calculate the new cursor position:
+        let dx = offsetX - event.clientX;
+        let dy = offsetY - event.clientY;
+        offsetX = event.clientX;
+        offsetY = event.clientY;
+
+        // Set the element's new position:
+        element.style.top = (element.offsetTop - dy) + "px";
+        element.style.left = (element.offsetLeft - dx) + "px";
+    }
+
+    // Function to handle mouse up event and remove event listeners
+    function closeDragElement() {
+        // Stop moving when mouse button is released:
+        document.removeEventListener('mousemove', elementDrag);
+        document.removeEventListener('mouseup', closeDragElement);
+    }
+
     // Register mousemove and mouseup event listeners
     document.addEventListener('mousemove', elementDrag);
     document.addEventListener('mouseup', closeDragElement);
 }
 
-// Function to handle mouse move event while dragging
-function elementDrag(event) {
-    event.preventDefault();
-    // Calculate the new position of the airport card
-    const airportCard = document.getElementById('airport-card');
-    airportCard.style.left = (airportCard.offsetLeft - offsetX + event.clientX) + 'px';
-    airportCard.style.top = (airportCard.offsetTop - offsetY + event.clientY) + 'px';
-    // Update the mouse positions
-    offsetX = event.clientX;
-    offsetY = event.clientY;
-}
+// Attach the mousedown event listener to the draggable handle of both the airport and plan flight cards
+document.querySelector('#airport-card .draggable-handle')?.addEventListener('mousedown', function(event) {
+    dragMouseDown(event, 'airport-card');
+});
 
-// Function to handle mouse up event and remove event listeners
-function closeDragElement() {
-    document.removeEventListener('mousemove', elementDrag);
-    document.removeEventListener('mouseup', closeDragElement);
-}
-
-// Add event listener to the draggable handle for mouse down event
-document.querySelector('#airport-card .draggable-handle').addEventListener('mousedown', dragMouseDown);
-
-
+document.querySelector('#plan-flight-card .draggable-handle')?.addEventListener('mousedown', function(event) {
+    dragMouseDown(event, 'plan-flight-card');
+});
 
 function changeTab(tabId) {
     document.querySelectorAll('#tabContents > div').forEach(function(div) {
@@ -51,3 +60,26 @@ function changeTab(tabId) {
 
 // Initialize the first tab as active
 changeTab('details');
+
+// Close airport card when clicking close button
+document
+  .getElementById("close-airport-card-btn")
+  .addEventListener("click", function () {
+    document.getElementById("airport-card").style.display = "none";
+  });
+
+  // Close airport card when clicking close button
+  document
+  .getElementById("close-flightplan-card-btn")
+  .addEventListener("click", function () {
+    document.getElementById("plan-flight-card").style.display = "none";
+  });
+
+    // Open flight plan planner when clicking the plan flight button
+document
+.getElementById("flightplan-btn")
+.addEventListener("click", function () {
+  document.getElementById("plan-flight-card").style.display = "block";
+});
+
+

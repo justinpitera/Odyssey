@@ -71,44 +71,47 @@ function fetchAirportDetails(airportIdent) {
 
         data.arrivals.forEach((arrival, index) => {
           arrivalsContent += `
-                <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                    <div class="p-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <p class="text-lg font-semibold text-indigo-600" onclick="zoomToLocation(${arrival.latitude}, ${arrival.longitude})"><strong>${arrival.callsign}</strong></p>
-                            <p class="px-3 py-1 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-blue-500">${arrival.airline}</p>
-                        </div>
-                        <div class="flex items-start">
-                            <i class="fas fa-plane text-2xl text-gray-800"></i>
-                            <div class="ml-4">
-                                <p class="text-xl font-medium text-gray-800">${arrival.aircraft}</p>
-                                <p class="text-md text-gray-700">Cruise Speed: <span class="font-semibold">${arrival.cruise_speed} knots</span>, Altitude: <span class="font-semibold">${arrival.altitude} ft</span></p>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between space-x-4">
-                            
-                        <!-- Flight start icon with progress bar and flight end icon -->
-                        <div class="flex items-center flex-1">
-                        <div class="relative">
-                            <small class="absolute top-[-10px]">${arrival.departure}</small>
-                            <small>${arrival.departureTime}</small>
-                        </div>
-                            <!-- Progress bar container -->
-                            <div class="flex-1 mx-4 bg-gray-200 rounded-full h-2.5">
-                                <!-- Progress indicator -->
-                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${100 - arrival.distanceRemaining}%"></div>
-                            </div>
-                            <div class="relative">
-                                <small class="absolute top-[-10px]">${arrival.arrival}</small>
-                                <small>${arrival.arrivalTime}</small> 
-                            </div>
-                        </div>
-                    </div>
-                        <div class="mt-4">
-                            <p class="text-sm text-gray-700">Route:</p>
-                            <p class="text-md font-semibold text-gray-900">${arrival.route}</p>
-                        </div>
-                    </div>
-                </div>`;
+          <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+              <div class="p-4">
+                  <div class="flex items-center justify-between mb-4">
+                      <div>
+                          <p class="text-lg font-semibold text-indigo-600 inline"><strong>${arrival.callsign}</strong></p>
+                          <!-- Track Flight Span -->
+                          <span class="ml-2 cursor-pointer text-sm text-gray-500 font-semibold"  onclick="zoomToLocation(${arrival.longitude}, ${arrival.latitude})">[Track Flight]</span>
+                      </div>
+                      <p class="px-3 py-1 text-xs leading-5 font-semibold rounded-full bg-gray-100 text-blue-500">${arrival.airline}</p>
+                  </div>
+                  <div class="flex items-start">
+                      <i class="fas fa-plane text-2xl text-gray-800"></i>
+                      <div class="ml-4">
+                          <p class="text-xl font-medium text-gray-800">${arrival.aircraft}</p>
+                          <p class="text-md text-gray-700">Cruise Speed: <span class="font-semibold">${arrival.cruise_speed} knots</span>, Altitude: <span class="font-semibold">${arrival.altitude} ft</span></p>
+                      </div>
+                  </div>
+                  <div class="flex items-center justify-between space-x-4">
+                      <div class="flex items-center flex-1">
+                          <div class="relative">
+                              <small class="absolute top-[-10px]">${arrival.departure}</small>
+                              <small>${arrival.departureTime}</small>
+                          </div>
+                          <div class="flex-1 mx-4 bg-gray-200 rounded-full h-2.5">
+                              <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${100 - arrival.distanceRemaining}%"></div>
+                          </div>
+                          <div class="relative">
+                              <small class="absolute top-[-10px]">${arrival.arrival}</small>
+                              <small>${arrival.arrivalTime}</small> 
+                          </div>
+                      </div>
+                  </div>
+                  <div class="mt-4">
+                      <p class="text-sm text-gray-700">Route:</p>
+                      <p class="text-md font-semibold text-gray-900">${arrival.route}</p>
+                  </div>
+                  <!-- Track Flight Button -->
+
+              </div>
+          </div>`;
+      
         });
       }
       arrivalsContent += "</div>"; // Close the div that sets the fixed height and overflow
@@ -175,6 +178,7 @@ function fetchAirportDetails(airportIdent) {
                 <p><strong><i class="fa-solid fa-clock"></i></strong> ${data.airportLocalTime}</p>
                 <hr>
                 <p><strong><i class="fa-solid fa-plane-arrival"></i></strong> ${countOfArrivals}</p>
+                <hr>
                 <p><strong><i class="fa-solid fa-plane-departure"></i></strong> ${countOfDepartures}</p>
             </div>
         `;
@@ -251,9 +255,4 @@ map.on("moveend", fetchAndDisplayAirportsDebounced);
 
 
 
-// Close airport card when clicking close button
-document
-  .getElementById("close-card-btn")
-  .addEventListener("click", function () {
-    document.getElementById("airport-card").style.display = "none";
-  });
+

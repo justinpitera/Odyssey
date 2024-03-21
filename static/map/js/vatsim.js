@@ -42,13 +42,23 @@ function getCookie(name) {
 
 
 function fetchAndUpdatePilotsDirectly() {
-    fetch('/map/api/fetch_flight_data/')  // URL to your Django view
-        .then(response => response.json())
+    // Define both fetch requests
+    const fetchVATSIM = fetch('/map/api/vatsim_network/').then(response => response.json());
+    const fetchIVAO = fetch('/map/api/ivao_network/').then(response => response.json());
+
+    // Use Promise.all to wait for both requests to complete
+    Promise.all([fetchVATSIM, fetchIVAO])
         .then(data => {
-            const pilots = data.pilots;
-            updateMapWithPilots(pilots);
+            // Combine the pilots data into a single object with vatsimPilots and ivaoPilots properties
+            const combinedPilotsData = {
+                vatsimPilots: data[0].pilots,
+                ivaoPilots: data[1].pilots,
+            };
+
+            // Update the map with the combined pilots data
+            updateMapWithPilots(combinedPilotsData);
         })
-        .catch(err => console.error('Error fetching VATSIM data from Django view:', err));
+        .catch(err => console.error('Error fetching data from VATSIM or IVAO:', err));
 }
 
 // Function to update the map with pilots' data
@@ -75,7 +85,8 @@ function updatePilot(pilot, source) {
     const markerLngLat = [pilot.longitude, pilot.latitude];
     const groundspeed = source === 'vatsim' ? pilot.groundspeed : pilot.speed; // IVAO uses 'speed'
     const name = source === 'vatsim' ? pilot.name : `User ${pilot.userId}`; // Example adaptation
-    const callsign = source === 'vatsim' ? pilot.callsign : `IVAO ${pilot.userId}`; // Defaulting for IVAO
+    const callsign = source === 'vatsim' ? pilot.callsign : `${pilot.callsign}`; // Defaulting for IVAO
+    const network = source === 'vatsim' ? 'VATSIM' : 'IVAO'; 
 
     // Update GeoJSON feature for each pilot
     const feature = {
@@ -91,6 +102,7 @@ function updatePilot(pilot, source) {
             groundspeed: groundspeed,
             altitude: pilot.altitude,
             callsign: callsign,
+            network: network,
             heading: getTrueHeading(pilot.heading) // Assuming this function is defined elsewhere
         }
     };
@@ -117,6 +129,8 @@ function generatePopupContent(properties) {
         <p><strong>Altitude:</strong> ${properties.altitude} feet</p>
         <p><strong>Groundspeed:</strong> ${properties.groundspeed} knots</p>
         <p><strong>Heading:</strong> ${properties.heading}°</p>
+        <hr>
+        <p><strong>Network:</strong> ${properties.network}</p>
     `;
 }
 
@@ -334,6 +348,9 @@ function generatePopupContent(pilot) {
         <p><strong>Altitude:</strong> ${pilot.altitude} feet</p>
         <p><strong>Groundspeed:</strong> ${pilot.groundspeed} knots</p>
         <p><strong>Heading:</strong> ${pilot.heading}°</p>
+        <hr>
+        <p><strong>Network:</strong> ${pilot.network}</p>
+        
     `;
 }
 document.addEventListener('DOMContentLoaded', function() {

@@ -1,34 +1,23 @@
 import csv
 from datetime import datetime, timedelta
 import json
-import os
+
 from xml.etree import ElementTree
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
-import pytz
+from django.shortcuts import  render
+from map.models import Airline
 from map.forms import ControllerForm
+from map.ivaoUtility import fetch_ivao_map_data, is_ivao_id
 from map.models import Airport, Controller
 from schedule.models import Flight
-from django.conf import settings
+
 from django.contrib.auth.decorators import login_required
-from django.db import IntegrityError
-from django.db.models import Q
-from django.views.decorators.http import require_http_methods
-import requests
 from django.views.decorators.csrf import csrf_exempt
-import pandas as pd
 import asyncio
 import aiohttp
-from django.forms.models import model_to_dict
-from asgiref.sync import sync_to_async
-from django.core.cache import cache
-# Define your custom User-Agent string
-user_agent = 'SimTrail/1.0 (SimTrail; https://simtrail.com/)'
+from concurrent.futures import ThreadPoolExecutor
 
-# Include the User-Agent in the headers of your request
-headers = {
-    'User-Agent': user_agent
-}
+from map.vatsimUtility import *
 
 @login_required
 def aircraft_card(request):
@@ -76,62 +65,6 @@ def aircraft_data(request):
     
     # Return all flights data as JSON
     return JsonResponse({'flights': flights_data})
-
-
-
-def waypoints_view(request):
-    waypoints = []
-    seen_names = set()  # Set to keep track of names already seen
-
-    with open(os.path.join(settings.STATIC_ROOT, 'data', 'waypoint_data.csv'), newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            name = row['name']
-            if name not in seen_names:  # Check if name has not been added yet
-                waypoints.append({
-                    'name': name,
-                    'latitude': float(row['latitude']),
-                    'longitude': float(row['longitude'])
-                })
-                seen_names.add(name)  # Add name to the set of seen names
-
-    return JsonResponse({'waypoints': waypoints})
-
-
-
-@require_http_methods(["GET"])
-def fetch_vatsim_data(request):
-    url = 'https://data.vatsim.net/v3/vatsim-data.json'
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
-        data = response.json()
-
-        pilots_data = data.get('pilots', [])
-        return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
-    except requests.RequestException as e:
-        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
-
-@require_http_methods(["GET"])
-def search_vatsim_pilots(request):
-    search_query = request.GET.get('query', '').lower()
-    url = 'https://data.vatsim.net/v3/vatsim-data.json'
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-
-        filtered_pilots = []
-        for pilot in data.get('pilots', []):
-            # Convert to lower case for case-insensitive search
-            if search_query in pilot.get('callsign', '').lower() or \
-               search_query in pilot.get('name', '').lower() or \
-               search_query in str(pilot.get('cid', '')).lower():
-                filtered_pilots.append(pilot)
-
-        return JsonResponse(filtered_pilots, safe=False)
-    except requests.RequestException as e:
-        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
 
 
 def airports_view(request):
@@ -201,58 +134,47 @@ def airports_view(request):
     # Return both the filtered list of airports and the search results
     return JsonResponse({'airports': airports, 'searchList': searchList, 'results': results}, safe=False)
 
-def convert_to_normal_time(time_str):
-    # Convert the time string to a datetime object
-    time_obj = datetime.strptime(time_str, "%H%M")
-    
-    # Format the datetime object as a string in the desired format
-    normal_time = time_obj.strftime("%I:%M %p")
-    
-    return normal_time
 
 
-def get_standard_time_of_arrival(dep_time, enroute_time):
-    # Convert departure time string to datetime object
-    deptime_obj = datetime.strptime(dep_time, "%H%M")
-    
-    # Convert enroute time string to timedelta object
-    enroute_time = timedelta(hours=int(enroute_time[:2]), minutes=int(enroute_time[2:]))
-    
-    # Calculate arrival time
-    arrival_time_obj = deptime_obj + enroute_time
-    
-    # Format the arrival time as a string in the desired format
-    arrival_normal_time = arrival_time_obj.strftime("%I:%M %p")
-    
-    return arrival_normal_time
+from map.timeUtility import get_local_time_from_ident, get_standard_time_of_arrival, convert_to_normal_time
 
+def process_flight(flight, airport_ident, source_type):
+    '''Processes a single flight and returns its details if it is relevant to the specified airport.'''
+    # Initialize common variables; some might need adjustments based on the source type
+    vatsimID = None
+    departureTime = None  # Placeholder, calculate based on available data
+    enrouteTime = None  # Placeholder, might need to calculate or may not be available
+    arrivalTime = None  # Placeholder, calculate based on available data
+    airline = "N/A"  # Default value, adjust as necessary
 
-
-import time
-from django.http import JsonResponse
-from concurrent.futures import ThreadPoolExecutor
-from django.shortcuts import get_object_or_404
-
-# Assuming these are your custom functions and models
-from .models import Airline, Airport
-
-def process_flight(flight, airport_ident, vatsim_data):
-    if flight['arrival'] == airport_ident or flight['departure'] == airport_ident:
-        loop_start_time = time.time()
-        vatsimID = flight['cid']
-        departureTime = convert_to_normal_time(flight['deptime'])
-        enrouteTime = flight['enroute_time']
-        arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
-        distanceRemaining = get_remaining_distance(None, vatsimID, vatsim_data)  # Adjusted for example
+    if source_type == 'vatsim':
         from django.core.exceptions import ObjectDoesNotExist
 
-        try:
-            airline_query = Airline.objects.filter(icao=flight['callsign'][:3]).only('name')
-            airline = airline_query.first().name if airline_query.exists() else "N/A"
-        except ObjectDoesNotExist:
-            airline = "N/A"
+        if flight['arrival'] == airport_ident or flight['departure'] == airport_ident:
+            vatsimID = flight['cid']
+            departureTime = convert_to_normal_time(flight['deptime'])
+            enrouteTime = flight['enroute_time']
+            arrivalTime = get_standard_time_of_arrival(flight['deptime'], flight['enroute_time'])
+            try:
+                airline_query = Airline.objects.filter(icao=flight['callsign'][:3]).only('name')
+                airline = airline_query.first().name if airline_query.exists() else "N/A"
+            except ObjectDoesNotExist:
+                airline = "N/A"
+            # Airline logic remains the same as in your original function
+            # Add additional VATSIM-specific processing here
+    elif source_type == 'ivao':
+        if flight['arrival'] == airport_ident or flight['departure'] == airport_ident:
+            departureTime = "Unknown"  # This would need your logic to determine or convert
+            enrouteTime = "Unknown"  # Depending on whether you can calculate or have equivalent data
+            arrivalTime = "Unknown"  # Similar to departureTime, requires conversion or calculation
+            try:
+                airline_query = Airline.objects.filter(icao=flight['callsign'][:3]).only('name')
+                airline = airline_query.first().name if airline_query.exists() else "N/A"
+            except ObjectDoesNotExist:
+                airline = "N/A"
 
-        flight_info = {
+    # Common processing continues here, assuming you can normalize some data between the two sources
+    flight_info = {
             'callsign': flight['callsign'],
             'departure': flight['departure'],
             'arrival': flight['arrival'],
@@ -266,28 +188,53 @@ def process_flight(flight, airport_ident, vatsim_data):
             'airline': airline,
             'latitude': flight['latitude'],
             'longitude': flight['longitude'],
-            'distanceRemaining': distanceRemaining  # This assumes distanceRemaining is meaningful for both arrivals and departures
-        }
-        print(f"Processed {'an arrival' if flight['arrival'] == airport_ident else 'a departure'} in {time.time() - loop_start_time} seconds")
-        return flight_info
-    return None
+            'distanceRemaining': 10 # This assumes distanceRemaining is meaningful for both arrivals and departures
+    }
+    return flight_info if flight_info['departure'] == airport_ident or flight_info['arrival'] == airport_ident else None
+
+
 
 def airport_details(request, airport_ident):
-    vatsim_data = fetch_flight_data()
-    
-    if vatsim_data is None:
-        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
-    
-    
-    # Process flights in parallel
-    with ThreadPoolExecutor(max_workers=25) as executor:
-        futures = [executor.submit(process_flight, flight, airport_ident, vatsim_data) for flight in process_flight_data(vatsim_data)]
-        results = [future.result() for future in futures if future.result() is not None]
+    '''Returns details of the specified airport, including arrivals and departures from VATSIM and IVAO.'''
+    vatsim_data = fetch_flight_data()  # Make sure this fetches VATSIM flight data
+    ivao_data = fetch_ivao_map_data()  # Make sure this fetches IVAO flight data
 
-    arrivals = [result for result in results if result['arrival'] == airport_ident]
-    departures = [result for result in results if result['departure'] == airport_ident]
+    if vatsim_data is None and ivao_data is None:
+        return JsonResponse({'error': 'Failed to fetch flight data'}, status=500)
 
-    # Fetch the airport details directly without additional overhead
+    all_flights = []
+    # Initialize counters
+    vatsim_arrivals = vatsim_departures = ivao_arrivals = ivao_departures = 0
+
+    # Process VATSIM flights if available
+    if vatsim_data is not None:
+        with ThreadPoolExecutor(max_workers=25) as executor:
+            futures = [executor.submit(process_flight, flight, airport_ident, 'vatsim') for flight in process_flight_data(vatsim_data)]
+            for future in futures:
+                result = future.result()
+                if result:
+                    if result['arrival'] == airport_ident:
+                        vatsim_arrivals += 1
+                    elif result['departure'] == airport_ident:
+                        vatsim_departures += 1
+                    all_flights.append(result)
+
+    # Process IVAO flights if available
+    if ivao_data is not None:
+        with ThreadPoolExecutor(max_workers=25) as executor:
+            futures = [executor.submit(process_flight, flight_details, airport_ident, 'ivao') for flight_details in ivao_data.values()]
+            for future in futures:
+                result = future.result()
+                if result:
+                    if result['arrival'] == airport_ident:
+                        ivao_arrivals += 1
+                    elif result['departure'] == airport_ident:
+                        ivao_departures += 1
+                    all_flights.append(result)
+
+    arrivals = [flight for flight in all_flights if flight['arrival'] == airport_ident]
+    departures = [flight for flight in all_flights if flight['departure'] == airport_ident]
+
     try:
         airport = Airport.objects.only('name', 'ident', 'iso_region').get(ident=airport_ident)
     except Airport.DoesNotExist:
@@ -298,11 +245,13 @@ def airport_details(request, airport_ident):
     airportRegion = airport.iso_region
     airportLocalTime = get_local_time_from_ident(request, airport_ident)
     
-    
-    
     return JsonResponse({
         'arrivals': arrivals,
         'departures': departures,
+        'vatsimArrivals': vatsim_arrivals,
+        'vatsimDepartures': vatsim_departures,
+        'ivaoArrivals': ivao_arrivals,
+        'ivaoDepartures': ivao_departures,
         'airportName': airportName,
         'airportIdent': airportIdent,
         'airportRegion': airportRegion,
@@ -311,562 +260,38 @@ def airport_details(request, airport_ident):
 
 
 
+def user_location(request, type):
+    '''Returns the latitude and longitude of a user based on their network ID.'''
+    identifier = request.GET.get('identifier', '')
+    
+    # Assuming which_network() correctly identifies the network based on the identifier
+    network = which_network(request, identifier)
 
+    if network == 'IVAO':
+        # Handle IVAO case (not implemented here)
+        return JsonResponse({'error': 'IVAO not supported'}, status=400)
 
-
-
-from timezonefinder import TimezoneFinder
-
-def get_local_time_from_ident(request, airport_ident):
-    latitude = Airport.objects.get(ident=airport_ident).latitude_deg
-    longitude = Airport.objects.get(ident=airport_ident).longitude_deg
-
-    tf = TimezoneFinder()
-    timezone_str = tf.timezone_at(lng=longitude, lat=latitude) 
-
-    timezone = pytz.timezone(timezone_str)
-    current_local_time = datetime.now(timezone)
-
-    # Format the date and time
-    formatted_date = current_local_time.strftime("%m-%d-%y")
-    formatted_time = current_local_time.strftime("%H:%M")
-
-
-    return formatted_date + " " + formatted_time
-
-
-
-def search_airports(request):
-    query = request.GET.get('query', '').lower()
-    results = []
-
-    with open(os.path.join(settings.STATIC_ROOT, 'data', 'airports.csv'), newline='', encoding='utf-8') as csvfile:
-        reader = csv.reader(csvfile)
-        next(reader, None)  # Skip the header row
-        for row in reader:
-            if query in row[3].lower() or query in row[1].lower():
-                result = {
-                    'ident': row[1],
-                    'name': row[3],
-                    'type': row[2],
-                    'coordinates': f"{row[5]}, {row[4]}",
-                    'municipality': row[10],
-                    'lat': f"{row[5]}",
-                    'lon': f"{row[4]}"
+    elif network == 'VATSIM':
+        latitude, longitude = get_vatsim_user_location(request=request, vatsim_id=identifier)
+        if latitude is not None and longitude is not None:
+            # Found the VATSIM user's location
+            location_data = {
+                'location': {
+                    'lat': latitude,
+                    'lon': longitude
                 }
-                # Prepend if ident matches exactly, else append
-                if query == row[1].lower():
-                    results.insert(0, result)  # This puts it at the beginning of the list
-                else:
-                    results.append(result)
-
-    return JsonResponse(results, safe=False)
-
-
-@csrf_exempt
-def import_airports_from_csv(request):
-    csv_file_path = 'staticfiles/data/airports.csv'  # Ensure this path is correct and accessible
-    with open(csv_file_path, newline='', encoding='utf-8') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            if row['type'].lower() == 'closed':
-                continue
-            
-            airport, created = Airport.objects.get_or_create(
-                ident=row['ident'],
-                defaults={
-                    'type': row['type'],
-                    'name': row['name'],
-                    'latitude_deg': float(row['latitude_deg']),
-                    'longitude_deg': float(row['longitude_deg']),
-                    'elevation_ft': int(row['elevation_ft']) if row['elevation_ft'] else None,
-                    'continent': row['continent'],
-                    'iso_country': row['iso_country'],
-                    'iso_region': row['iso_region'],
-                }
-            )
-            
-            if created:
-                print(f"Successfully added: {airport.name} ({airport.ident})")
-            else:
-                print(f"Airport already exists: {airport.name} ({airport.ident})")
-    return HttpResponse('Airport data imported successfully.')
-
-
-
-
-from math import radians, cos, sin, asin, sqrt
-def haversine(lon1, lat1, lon2, lat2):
-    """
-    Calculate the great circle distance in kilometers between two points 
-    on the earth (specified in decimal degrees).
-    """
-    # convert decimal degrees to radians 
-    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-
-    # haversine formula 
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
-    r = 6371 # Radius of earth in kilometers. Use 3956 for miles
-    return c * r
-
-from django.http import JsonResponse
-import os
-import csv
-from django.conf import settings
-import math
-
-def waypoint_coordinates(request, name):
-    lat = request.GET.get('lat', None)
-    lon = request.GET.get('lon', None)
-
-    # Check if lat or lon are 'undefined' or None and handle accordingly
-    if lat in ('undefined', None) or lon in ('undefined', None):
-        lat = 0
-        lon = 0
-        
-    try:
-        lat = float(lat)
-        lon = float(lon)
-    except ValueError:
-        # Handle the case where conversion to float fails
-        return JsonResponse({'error': 'Invalid latitude or longitude'}, status=400)
-
-    filepath = os.path.join(settings.STATIC_ROOT, 'data', 'waypoint_data.csv')
-    closest_distance = None
-    closest_waypoint = None
-
-    with open(filepath, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            if row['name'] == name:
-                waypoint_lat = float(row['latitude'])
-                waypoint_lon = float(row['longitude'])
-                distance = math.sqrt((lat - waypoint_lat) ** 2 + (lon - waypoint_lon) ** 2)
-
-                if closest_distance is None or distance < closest_distance:
-                    closest_distance = distance
-                    closest_waypoint = row
-
-    if closest_waypoint:
-        return JsonResponse({
-            'name': closest_waypoint['name'],
-            'latitude': float(closest_waypoint['latitude']),
-            'longitude': float(closest_waypoint['longitude'])
-        })
-    else:
-        return JsonResponse({'error': 'Waypoint not found'}, status=404)
-    
-
-def should_skip_waypoint(current, next_waypoint, previous=None, threshold=10):
-    """
-    Determines if a waypoint should be skipped based on its distance
-    from the previous and next waypoints.
-    
-    Args:
-        current: The current waypoint (latitude, longitude).
-        next_waypoint: The next waypoint (latitude, longitude).
-        previous: The previous waypoint (latitude, longitude), if any.
-        threshold: The distance threshold for skipping waypoints.
-    
-    Returns:
-        A boolean indicating whether the waypoint should be skipped.
-    """
-    # Calculate distance to next waypoint
-    distance_to_next = haversine(current[0], current[1], next_waypoint[0], next_waypoint[1])
-    
-    # If there's no previous waypoint, only consider the distance to the next waypoint
-    if not previous:
-        return distance_to_next > threshold
-    
-    # Calculate distance from previous waypoint
-    distance_from_previous = haversine(previous[0], previous[1], current[0], current[1])
-    
-    # Check if the waypoint is far from both the previous and next waypoints
-    return distance_to_next > threshold and distance_from_previous > threshold
-
-from django.http import JsonResponse
-from .models import Airline, Airport, VATSIMFlight, Waypoint
-
-# Cache setup
-online_controllers_cache = {
-    'data': None,
-    'last_updated': 0,
-    'update_interval': 300  # Cache duration in seconds, e.g., 5 minutes
-}
-
-def fetch_online_controllers():
-    current_time = time.time()
-    # Check if cached data is fresh
-    if online_controllers_cache['data'] is not None and (current_time - online_controllers_cache['last_updated']) < online_controllers_cache['update_interval']:
-        return online_controllers_cache['data']
-    else:
-        # Fetch new data if cache is stale
-
-        response = requests.get("https://api.vatsim.net/v2/atc/online", headers=headers)
-        if response.status_code == 200:
-            online_controllers_cache['data'] = response.json()
-            online_controllers_cache['last_updated'] = current_time
-            return online_controllers_cache['data']
+            }
+            return JsonResponse(location_data)
         else:
-            return [] 
+            # VATSIM user not found or no location data available
+            return JsonResponse({'error': 'VATSIM user not found or no location data'}, status=404)
     
-
-
-DIVISION_TO_REGION_MAP = {
-    "PAC": ["Y", "A", "N", "F"],
-    "GBR": ["E"],
-    "JPN": ["R"],
-    "KOR": ["R"],
-    "NZ": ["N", "Z"],
-    "PRC": ["Z"],
-    "ROC": ["R"],
-    "SEA": ["V", "W"],
-    "WA": ["O"],
-    "EUD": ["E", "L", "U"],
-    "USA": ["K", "P"],
-    "IL": ["L"],
-    "MENA": ["O", "H"],
-    "RUS": ["U", "E"],
-    "SSA": ["F", "H"],
-    "UK": ["E"],
-    "BRZ": ["S"],
-    "CAN": ["C"],
-    "CAR": ["T"],
-    "CA": ["M"],
-    "MEX": ["M"],
-    "SUR": ["S"],
-    "CAM": ["M"],
-    "SAM": ["S"],
-}
-# Initial setup for the division cache
-division_cache = {}
-cache_update_interval = 86400  # 24 hours in seconds
-
-def fetch_controller_division(request, id):
-    current_time = time.time()
-    
-    print("Checking for division data in cache.")
-    # Check if the division data is in the cache and is fresh
-    if id in division_cache and current_time - division_cache[id]['last_updated'] < cache_update_interval:
-        division = division_cache[id]['division']
-        print(f"Using cached division data for {id}: {division}")
     else:
-        try:
-            print(f"Fetching new division data for {id}, not found in cache or cache is stale.")
-            # Make an API request to the VATSIM API
-            response = requests.get(f'https://api.vatsim.net/api/ratings/{id}', headers=headers)
-            response.raise_for_status()  # Raise an error for bad responses
-            
-            # Extract the division from the response data
-            data = response.json()
-            division = data.get('division', None)
-            
-            if division is None:
-                return HttpResponse('Division not found', status=404)
-            
-            # Update the cache with new data
-            division_cache[id] = {'division': division, 'last_updated': current_time}
-        
-        except requests.RequestException as e:
-            # Handle any errors that occur during the API request
-            return HttpResponse(f'Error retrieving data: {str(e)}', status=500)
+        # Handle case where network is neither IVAO nor VATSIM
+        return JsonResponse({'error': 'Unknown network'}, status=400)
     
-    # Look up the ICAO codes for the division
-    icao_codes = DIVISION_TO_REGION_MAP.get(division, ['-1'])
-    
-    # Return the ICAO codes as a string in the HttpResponse
-    return HttpResponse(','.join(icao_codes))
-
-
-def search_vatsim(request):
-    controllers = fetch_online_controllers()
-    
-    seen_idents = set()
-    results = []
-
-    for controller in controllers:
-        search_ident = controller['callsign'].split("_")[0]
-        type = controller['callsign'].split("_")[-1]
-
-
-            # If ident is exactly 4 characters, match exactly the last three characters in the database
-        airports = Airport.objects.filter(ident__endswith=search_ident[-3:]).exclude(type__in=['small_airport', 'heliport', 'closed'])
-
-        for airport in airports:
-            if airport.ident not in seen_idents:
-                seen_idents.add(airport.ident)
-                data = {
-                    'ident': airport.ident,
-                    'latitude_deg': airport.latitude_deg,
-                    'longitude_deg': airport.longitude_deg,
-                    'type': type  # Assuming you want to maintain the type as per the controller's callsign
-                }
-                results.append(data)
-
-    if results:
-        return JsonResponse({'airports': results})
-    else:
-        return JsonResponse({'error': 'No matching airports found for online controllers'}, status=404)
-
-def update_vatsim_controllers(request):
-    controllers = fetch_online_controllers()
-
-    results = []
-    updated_controllers = 0
-    total_controllers = len(controllers)  # Get the total number of controllers
-
-    online_count = 0
-    database_controllers = Controller.objects.all()
-    for index, controller in enumerate(database_controllers, start=1):
-        print(f"Fetching request to see if {controller.vatsim_id} @ {controller.ident} is online. {index} of {len(database_controllers)}")
-        if is_online(request, controller.vatsim_id):
-            print(f"Controller {controller.vatsim_id} @ {controller.ident} is still online.")
-            controller.is_online = True
-            online_count += 1
-            controller.save()
-        else:
-            print(f"Controller {controller.vatsim_id} @ {controller.ident} is now offline.")
-            controller.is_online = False
-            controller.save()
-
-    print("Request complete: ", online_count, " controllers reported online.")
-    for index, controller in enumerate(controllers, start=1):
-        print(f"Processing data for controller {index} of {total_controllers}: {controller['id']}")
-        search_ident = controller['callsign'].split("_")[0]
-        controller_type = controller['callsign'].split("_")[-1]
-        #division = fetch_controller_division(request, controller['id']).content.decode('utf-8')
-        vatsim_id = controller['id']
-
-        backendName = f'{search_ident}_{controller_type}'
-        
-        existing_controller = Controller.objects.filter(name=backendName).first()
-        if existing_controller:
-            # If the controller exists, update without changing latitude and longitude
-            existing_controller.vatsim_id = vatsim_id
-            existing_controller.frequency = controller.get('frequency', 0)  # Temporary placeholder for frequency
-            existing_controller.type = controller_type
-            existing_controller.division = None
-            existing_controller.is_online = True
-            existing_controller.save()
-            print(f"Updated {backendName} with VATSIM ID: {vatsim_id}")
-        else:
-            # If the controller does not exist, create a new one
-            Controller.objects.create(
-                name=backendName,
-                vatsim_id=vatsim_id,
-                ident=search_ident,
-                latitude_deg=0, 
-                longitude_deg=0,
-                frequency=controller.get('frequency', 0),  # Temporary placeholder for frequency
-                type=controller_type,
-                division=None,
-                is_online=True,
-                airport=None,
-            )   
-            print(f"Created {backendName} with VATSIM ID: {vatsim_id}")
-        updated_controllers += 1
-
-    return JsonResponse({'message': f'{updated_controllers} controllers processed.'})
-def controllers_data(request):
-    controllers = Controller.objects.all().values(
-        'ident', 'latitude_deg', 'longitude_deg', 'type', 'division', 'vatsim_id', 'airport_id', 'geoname'
-    ).exclude(is_online=False)
-    return JsonResponse({'controllers': list(controllers)})
-
-def add_controller(request):
-    if request.method == 'POST':
-        form = ControllerForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('map')  # Redirect to a new URL
-    else:
-        form = ControllerForm()  # An unbound form
-
-    return render(request, 'map/add_controller.html', {'form': form})
-
-
-import time
-
-# Initial setup for the cache
-vatsim_data_cache = {
-    'last_updated': 0,
-    'data': None,
-    'update_interval': 180
-}
-
-def update_vatsim_data_cache():
-    """Update the VATSIM data cache if necessary."""
-    current_time = time.time()
-    # Check if the cache needs to be updated
-    if current_time - vatsim_data_cache['last_updated'] > vatsim_data_cache['update_interval']:
-        try:
-            response = requests.get('https://api.vatsim.net/v2/atc/online')
-            if response.status_code == 200:
-                vatsim_data_cache['data'] = response.json()
-                vatsim_data_cache['last_updated'] = current_time
-            else:
-                print("Failed to fetch data from VATSIM")
-        except Exception as e:
-            print(f"Error updating VATSIM cache: {e}")
-
-def is_online(request, vatsim_id):
-    """Check if a controller with the given VATSIM ID is online, using cached data."""
-    # Ensure the cache is up to date before checking
-    update_vatsim_data_cache()
-    # Now check the cached data
-    if vatsim_data_cache['data'] is not None:
-        for controller in vatsim_data_cache['data']:
-            if controller['id'] == vatsim_id:
-                return True
-    return False
-
-from django.http import JsonResponse
-from .models import Waypoint
-import requests
-
-def fetch_flightplan_from_vatsim(vatsim_id):
-    """Fetches the flight plan for a given VATSIM ID from the VATSIM API."""
-    url = f"https://api.vatsim.net/v2/members/{vatsim_id}/flightplans"
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        flightplans = response.json()
-        if flightplans:
-            return flightplans[0]  
-    return None
-
-def extract_waypoints_from_route(route):
-    """Extracts waypoint identifiers from a flight plan route string."""
-    return route.split() 
-
-def match_waypoints_in_db(waypoints):
-    """Fetches waypoints from the database and returns them in the order they appear in the waypoints list."""
-    waypoints_queryset = Waypoint.objects.filter(ident__in=waypoints)
-    # Create a dictionary of waypoints for fast lookup
-    waypoint_dict = {wp.ident: wp for wp in waypoints_queryset}
-    # Reorder waypoints based on the input list order
-    ordered_waypoints = [waypoint_dict[ident] for ident in waypoints if ident in waypoint_dict]
-    return ordered_waypoints
-
-def construct_route(request, vatsim_id):
-    """Constructs a route from VATSIM flight plan's waypoints, including departure and arrival airports."""
-    flight_plan = fetch_flightplan_from_vatsim(vatsim_id)
-    if not flight_plan:
-        return JsonResponse({'error': 'Flight plan not found'}, status=404)
-
-    # Extract route and airport identifiers
-    dep_ident = flight_plan.get('dep', '')
-    arr_ident = flight_plan.get('arr', '')
-    route = flight_plan.get('route', '')
-
-    # Find airports in the database
-    try:
-        departure_airport = Airport.objects.get(ident=dep_ident)
-        arrival_airport = Airport.objects.get(ident=arr_ident)
-    except Airport.DoesNotExist:
-        return JsonResponse({'error': 'Airport not found'}, status=404)
-
-    waypoint_identifiers = extract_waypoints_from_route(route)
-    ordered_waypoints = match_waypoints_in_db(waypoint_identifiers)
-
-    distance_threshold = 1000
-
-    # Initialize the list of waypoints data, starting with the departure airport
-    waypoints_data = [{
-        'ident': departure_airport.ident,
-        'latitude_deg': departure_airport.latitude_deg,
-        'longitude_deg': departure_airport.longitude_deg
-    }]
-
-    # Iterate over the waypoints, skipping those too far away from the previous one
-    for i in range(len(ordered_waypoints)):
-        prev_wp = waypoints_data[-1] if waypoints_data else departure_airport
-        curr_wp = ordered_waypoints[i]
-        distance = haversine(prev_wp['latitude_deg'], prev_wp['longitude_deg'], curr_wp.latitude_deg, curr_wp.longitude_deg)
-
-        if distance <= distance_threshold:
-            waypoints_data.append({
-                'ident': curr_wp.ident,
-                'latitude_deg': curr_wp.latitude_deg,
-                'longitude_deg': curr_wp.longitude_deg
-            })
-
-    # Add the arrival airport to the end of the waypoints data
-    waypoints_data.append({
-        'ident': arrival_airport.ident,
-        'latitude_deg': arrival_airport.latitude_deg,
-        'longitude_deg': arrival_airport.longitude_deg
-    })
-
-    return JsonResponse({'waypoints': waypoints_data})
-
-
-
-
-def import_waypoints_data(request):
-    # Hardcoded path to your CSV file
-    csv_file_path = 'staticfiles/data/waypoint_data.csv'
-    
-    results = pd.read_csv(csv_file_path)
-    length = len(results)
-
-
-    with open(csv_file_path, newline='') as csv_file:
-        reader = csv.reader(csv_file)
-        next(reader, None)  # Skip the header row if your CSV has one
-        for index, row in enumerate(reader, start=1):
-            ident, latitude_deg, longitude_deg = row  # Adjust according to your CSV structure
-            
-            # Attempt to find a Waypoint with the same ident, latitude_deg, and longitude_deg
-            waypoint_exists = Waypoint.objects.filter(
-                ident=ident,
-                latitude_deg=float(latitude_deg),
-                longitude_deg=float(longitude_deg)
-            ).exists()
-
-            # If the waypoint does not exist, create it
-            if not waypoint_exists:
-                Waypoint.objects.create(
-                    ident=ident,
-                    latitude_deg=float(latitude_deg),
-                    longitude_deg=float(longitude_deg)
-                )
-
-            print(f"Processed {index} of {length} waypoints")
-    return HttpResponse("Waypoints imported successfully, duplicates skipped.", status=200)
-
-async def fetch_flight_plan(session, vatsim_id, index, count_members):
-    print(f"Fetching flight plan for {vatsim_id}. {index} of {count_members}")
-    flight_plan_url = f'https://api.vatsim.net/v2/members/{vatsim_id}/flightplans'
-    try:
-        async with session.get(flight_plan_url) as response:
-            if 'application/json' in response.headers.get('Content-Type', ''):
-                flight_plans = await response.json()
-                if flight_plans:
-                    return flight_plans[0]
-            else:
-                print(f"Non-JSON response for VATSIM ID {vatsim_id}: {response.status}, {response.headers.get('Content-Type')}")
-    except aiohttp.ContentTypeError as e:
-        print(f"JSON decode error for VATSIM ID {vatsim_id}: {e}")
-    return None
-
-async def save_flight_plan_to_db(plan):
-    await sync_to_async(VATSIMFlight.objects.update_or_create, thread_sensitive=True)(
-        vatsim_id=plan['vatsim_id'],
-        defaults={
-            'callsign': plan['callsign'],
-            'departure': plan['dep'],
-            'arrival': plan['arr'],
-            'aircraft': plan['aircraft'],
-            'cruise_speed': int(plan['cruisespeed']) if 'cruisespeed' in plan and plan['cruisespeed'].isdigit() else 0,
-            'altitude': int(plan['altitude']) if 'altitude' in plan and plan['altitude'].isdigit() else 0,
-            'route': plan['route'],
-        }
-    )
-
 async def fetch_and_save_inbound_flights():
+    '''Fetches flight plans of online VATSIM members and saves them to the database.'''
     online_members_url = 'https://api.vatsim.net/v2/members/online'
     async with aiohttp.ClientSession() as session:
         async with session.get(online_members_url) as response:
@@ -888,78 +313,14 @@ def inbound_flights(request):
     return JsonResponse({'status': 'Flight plans updated in the database.'})
 
 
-@require_http_methods(["GET"])
-def fetch_vatsim_data(request):
-    url = 'https://data.vatsim.net/v3/vatsim-data.json'
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raises an HTTPError if the response status code is 4XX/5XX
-        data = response.json()
-
-        pilots_data = data.get('pilots', [])
-        # You can now process pilots_data as needed or return it directly
-        return JsonResponse(pilots_data, safe=False)  # `safe=False` is necessary because we're returning a list
-    except requests.RequestException as e:
-        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
-        
-        
-def fetch_vatsim_flight_data(request):
-
-    cache_key = 'vatsim_data'
-    cache_time = 15  # time in seconds for cache to be valid
-
-    # Try to get cached data
-    data = cache.get(cache_key)
-    if data is not None:
-        return JsonResponse(data)  # Return cached data if available
-
-    # Fetch new data if not cached or cache is stale
-    url = 'https://data.vatsim.net/v3/vatsim-data.json'
-    try:
-        response = requests.get(url,headers=headers)
-        response.raise_for_status()
-        data = response.json()
-        cache.set(cache_key, data, cache_time)  # Update cache
-        return JsonResponse(data)
-    except requests.RequestException as e:
-        return JsonResponse({'error': 'Failed to fetch VATSIM data', 'details': str(e)}, status=500)
-
-
-# Initial cache setup
-flight_data_cache = {
-    'data': None,
-    'last_updated': 0,
-    'update_interval': 15 
-}
-
-
-# Initial cache setup
-flight_data_cache = {
-    'data': None,
-    'last_updated': 0,
-    'update_interval': 15 # Cache duration in seconds, e.g., 5 minutes
-}
-
-def fetch_flight_data():
-    current_time = time.time()
-    # Check if the cache is fresh
-    if flight_data_cache['data'] is not None and (current_time - flight_data_cache['last_updated']) < flight_data_cache['update_interval']:
-        print("Using cached data.")
-        return flight_data_cache['data']
+def which_network(request, network_id):
+    network_id = int(network_id)
+    if is_vatsim_id(request, network_id):
+        return 'VATSIM'
+    elif is_ivao_id(request, network_id):
+        return 'IVAO'
     else:
-        print("Fetching new data.")
-        # Define custom headers with a non-generic User-Agent
-        response = requests.get("https://data.vatsim.net/v3/vatsim-data.json", headers=headers)
-        if response.status_code == 200:
-            # Update the cache with the new data
-            flight_data_cache['data'] = response.json()
-            flight_data_cache['last_updated'] = current_time
-            return flight_data_cache['data']
-        else:
-            # In case of an error, return None or consider returning stale data if critical
-            return None
-        
-
+        return JsonResponse({'error': 'Invalid network ID'}, status=400)
 
 @csrf_exempt
 def import_airline_data(request):
@@ -988,197 +349,3 @@ def import_airline_data(request):
 
     return HttpResponse('Airline data imported successfully.')
 
-
-def process_flight_data(data):
-    flights = []
-    
-    for prefile in data.get('pilots', []):
-        
-        flight_plan = prefile.get('flight_plan')
-        
-        # Skip this prefile if flight_plan is None
-        if not flight_plan:
-            continue
-
-        if not flight_plan.get('arrival', '') or not flight_plan.get('departure', ''):  # Skip if no arrival or departure
-            continue
-        
-        # Extract flight_plan details
-        flight_details = {
-            'aircraft_short': flight_plan.get('aircraft_short', ''),
-            'departure': flight_plan.get('departure', ''),
-            'arrival': flight_plan.get('arrival', ''),
-            'alternate': flight_plan.get('alternate', ''),
-            'cruise_tas': flight_plan.get('cruise_tas', ''),
-            'altitude': flight_plan.get('altitude', ''),
-            'deptime': flight_plan.get('deptime', ''),
-            'enroute_time': flight_plan.get('enroute_time', ''),
-            'route': flight_plan.get('route', ''),
-        }
-
-        # Add pilot details
-        flight_details.update({
-            'name': prefile.get('name', ''),
-            'callsign': prefile.get('callsign', ''),
-            'transponder': prefile.get('transponder', ''),
-            'cid': prefile.get('cid', ''),
-            'latitude': prefile.get('latitude', ''),
-            'longitude': prefile.get('longitude', ''),
-        })
-        
-        flights.append(flight_details)
-    
-    return flights
-import concurrent.futures
-
-
-@require_http_methods(["GET"])
-def vatsim_flight_details(request):
-    vatsim_data = fetch_flight_data()
-    if vatsim_data is not None:
-        processed_flights = process_flight_data(vatsim_data)
-        return JsonResponse({"flights": processed_flights})
-    else:
-        return JsonResponse({'error': 'Failed to fetch VATSIM data'}, status=500)
-
-
-def find_pilot_by_cid(cid, vatsim_data):
-    
-    for pilot in vatsim_data.get("pilots", []):
-        if str(pilot.get("cid", "")) == str(cid):
-            return pilot
-    return None
-
-def get_remaining_distance(request, cid, vatsim_data):
-    if vatsim_data is None:
-        return JsonResponse({"error": "Could not fetch VATSIM data"}, status=500)
-
-    pilot_data = find_pilot_by_cid(cid, vatsim_data)
-    if pilot_data is None:
-        return JsonResponse({"error": "Pilot not found"}, status=404)
-
-    flight_plan = pilot_data.get('flight_plan', {})
-    route = flight_plan.get('route', '')
-    current_latitude = float(pilot_data.get('latitude', 0))
-    current_longitude = float(pilot_data.get('longitude', 0))
-
-    waypoints_data = extract_waypoints_from_route(route)
-    ordered_waypoints = match_waypoints_in_db(waypoints_data)
-    # Parallelize total distance calculation
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_distance = {
-            executor.submit(haversine, ordered_waypoints[i].longitude_deg, ordered_waypoints[i].latitude_deg, ordered_waypoints[i + 1].longitude_deg, ordered_waypoints[i + 1].latitude_deg): i
-            for i in range(len(ordered_waypoints) - 1)
-        }
-        total_distance = sum(future.result() for future in concurrent.futures.as_completed(future_to_distance))
-
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_distance_wp = {
-            executor.submit(haversine, current_longitude, current_latitude, wp.longitude_deg, wp.latitude_deg): wp
-            for wp in ordered_waypoints
-        }
-        nearest_wp, nearest_distance = min(
-            ((wp, future.result()) for future, wp in future_to_distance_wp.items()),
-            key=lambda x: x[1]
-        )
-
-    # Calculate remaining distance from nearest waypoint
-    remaining_distance = sum(
-        haversine(wp.longitude_deg, wp.latitude_deg, ordered_waypoints[j].longitude_deg, ordered_waypoints[j].latitude_deg)
-        for j, wp in enumerate(ordered_waypoints) if j >= ordered_waypoints.index(nearest_wp)
-    )
-    if ordered_waypoints.index(nearest_wp) > 0:
-        remaining_distance += nearest_distance
-
-    remaining_percentage = (remaining_distance / total_distance) * 100 if total_distance > 0 else 0
-
-    print("Finished calculating distance for ", cid)
-    return remaining_percentage
-
-
-
-# Assuming the existence of a global dictionary to store the last known data
-# This dictionary should be accessible wherever your fetch_ivao_network function is defined
-last_known_data = {}
-
-import time  # Import time module for timestamp functionality
-
-import requests
-import time
-
-# Assuming the existence of a global dictionary to store the last known data
-last_known_data = {}
-
-def fetch_ivao_network(request):
-    # The cache key for storing/retrieving the data
-    cache_key = 'ivao_pilots_data_simplified'
-    # Time to live for the cache in seconds
-    cache_ttl = 15
-
-    # Try fetching from cache first
-    cache_response = cache.get(cache_key)
-    cached_data = cache_response.get('data') if cache_response else None
-    cached_time = cache_response.get('timestamp') if cache_response else None
-
-    # Check if cached data is still within TTL
-    if cached_data and cached_time and (time.time() - cached_time) < cache_ttl:
-        return JsonResponse({'pilots': cached_data}, safe=False)
-
-    try:
-        # The IVAO API base URL, endpoint, and full URL
-        base_url = 'https://api.ivao.aero/'
-        endpoint = 'v2/tracker/whazzup'
-        url = f"{base_url}{endpoint}"
-        
-        # Assume 'headers' contains the necessary authentication headers, including OAuth tokens if required
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
-            # Parse the JSON response
-            original_data = response.json()
-            clients_data = original_data.get('clients', [])
-            pilots_data = clients_data.get('pilots',[])
-            print(pilots_data)
-            # Filter or process to get only pilot data, adjust according to the actual data structure
-            # This is an assumed structure; you'll need to adapt it based on the actual API response
-            simplified_data = []
-
-            for pilot in pilots_data:
-                if pilot is None:
-                    continue
-
-                last_track = pilot.get('lastTrack', {})
-                
-                flight_plan = pilot.get('flightPlan', {})
-
-                departure_city = flight_plan.get('departureId', {}) if isinstance(flight_plan, dict) else {}
-                
-
-                simplified_data.append({
-                    'userId': pilot.get('userId'),
-                    'latitude': last_track.get('latitude') if isinstance(last_track, dict) else None,
-                    'longitude': last_track.get('longitude') if isinstance(last_track, dict) else None,
-                    'heading': last_track.get('heading') if isinstance(last_track, dict) else None,
-                    'altitude': last_track.get('altitude') if isinstance(last_track, dict) else None,
-                    'speed': last_track.get('groundSpeed') if isinstance(last_track, dict) else None,
-                    'departure': departure_city,
-                })
-
-
-            # Cache the simplified data with a timestamp
-            cache.set(cache_key, {'data': simplified_data, 'timestamp': time.time()}, cache_ttl)
-
-            # Optionally update last known data
-            global last_known_data
-            last_known_data = simplified_data.copy()
-
-            return JsonResponse({'pilots': simplified_data}, safe=False)
-        else:
-            raise Exception("Failed to fetch data due to unsuccessful status code.")
-    except Exception as e:
-        if last_known_data:
-            return JsonResponse({'pilots': last_known_data}, safe=False)
-        else:
-            print(f"Failed to fetch new data and no cached or last known data is available. Error: {e}")
-            return JsonResponse({'error': 'Failed to fetch data from IVAO and no cached or last known data is available'}, status=500)

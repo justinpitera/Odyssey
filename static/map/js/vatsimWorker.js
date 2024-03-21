@@ -2,8 +2,8 @@ self.addEventListener('message', function(e) {
     const { action, mapBounds } = e.data;
     if (action === 'updatePilots') {
         // Define both fetch requests
-        const fetchVATSIM = fetch('/map/api/fetch_flight_data/').then(response => response.json());
-        const fetchIVAO = fetch('/map/api/ivao-data/').then(response => response.json());
+        const fetchVATSIM = fetch('/map/api/vatsim_network/').then(response => response.json());
+        const fetchIVAO = fetch('/map/api/ivao_network/').then(response => response.json());
 
         // Use Promise.all to wait for both requests to complete
         Promise.all([fetchVATSIM, fetchIVAO])

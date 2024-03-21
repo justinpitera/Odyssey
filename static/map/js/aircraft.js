@@ -205,6 +205,7 @@ function continuouslyFollowAircraft() {
   }
 }
 
+
 // Update this to your existing interval, or create a new one
 setInterval(continuouslyFollowAircraft, 1000); 
 // Assuming `map` is your Mapbox GL JS map instance

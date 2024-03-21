@@ -19,17 +19,264 @@
         <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.ico' %}" >
     </head>
     <body data-user-id="{{user.id}}">
-        <div id="loading-screen"></div>
-        <script>
-            window.addEventListener('load', function() {
-                const loadingScreen = document.getElementById('loading-screen');
-                if(loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-            });
-        </script>
+        <body data-user-id="{{user.id}}">
+            <div id="loading-screen" class="loading-screen">
+                <div class="loading-content">
+                    <h1>Simtrail is loading...</h1>
+                    <div class="progress-bar mt-10">
+                        <div class="progress" id="progress"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                window.addEventListener('load', function() {
+                    const loadingScreen = document.getElementById('loading-screen');
+                    const progressBar = document.getElementById('progress');
+                    
+                    if (window.map) {
+                        if (loadingScreen) {
+                            loadingScreen.style.display = 'flex'; // Show loading screen
+                        }
+                        
+                        // Simulate initial progress (optional, can be removed if not needed)
+                        progressBar.style.width = '50%';
+                        
+                        map.on('idle', function() {
+                            // Set progress to 100% when the map is fully loaded
+                            progressBar.style.width = '100%';
+                            
+                            // Hide the loading screen after a slight delay to show completion
+                            setTimeout(() => {
+                                if (loadingScreen) {
+                                    loadingScreen.style.display = 'none';
+                                }
+                            }, 500); // Adjust delay as needed
+                        });
+                    }
+                });
+                
+            </script>
+
+
+        <div id="menu-toggle" class="fixed top-1/2 left-0 transform -translate-y-1/2 z-30 transition-transform duration-300 ease-in-out">
+            <button id="toggle-btn" class="bg-gray-700 opacity-75 p-4 rounded-r-lg shadow-lg">
+                <i id="toggle-icon" class="fas fa-bars text-white"></i>
+            </button>
+        </div>
         
 
+<!-- Sidebar Container -->
+<div id="sidebar" class="fixed inset-y-0 left-0 z-50 flex flex-col w-64 md:w-84 lg:w-96 bg-gray-800 text-white transform -translate-x-full transition-transform duration-300 ease-in-out shadow-xl">
+    <!-- Sidebar Content -->
+    <div class="flex-1 overflow-y-auto p-5">
+        <!-- Sidebar Header / Close Button -->
+        <div class="flex items-center justify-between mb-10">
+            <h2 class="text-xl font-semibold">Simtrail</h2>
+
+        </div>
+
+        <!-- Section 1: My Stuff -->
+        <div class="space-y-1 mb-8">
+            <h3 class="text-lg font-semibold mb-2 pl-2">My Stuff</h3>
+            <a href="#" class="flex items-center p-2 text-base font-normal text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600">
+                <i class="fa-solid fa-paper-plane w-6"></i>
+                <span class="ml-3">Flight Planner</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-base font-normal text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600">
+                <i class="fas fa-book w-6"></i>
+                <span class="ml-3">Logbook</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-base font-normal text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600">
+                <i class="fa-solid fa-gamepad"></i>
+                <span class="ml-3">Remote Control</span>
+            </a>
+        </div>
+
+        <!-- Section 2: Network -->
+        <div class="space-y-1 mb-8">
+            <h3 class="text-lg font-semibold mb-2 pl-2">Network</h3>
+            <a href="#" class="flex items-center p-2 text-base font-normal text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600">
+                <i class="fas fa-calendar-alt w-6"></i>
+                <span class="ml-3">Events</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-base font-normal text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600">
+                <i class="fa-regular fa-people-group w-6"></i>
+                <span class="ml-3">Virtual Airlines</span>
+            </a>
+            <a href="#" class="flex items-center p-2 text-base font-normal text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600">
+                <i class="fas fa-trophy w-6"></i>
+                <span class="ml-3">Achievements</span>
+            </a>
+        </div>
+
+
+
+
+        <div class="space-y-1 mb-8">
+            <h3 class="text-lg font-semibold mb-2 pl-2">Popular Airports</h3>
+            <div class="bg-gray-700 rounded-lg p-2 hover:bg-gray-600">
+                <p>JFK - New York</p>
+            </div>
+            <div class="bg-gray-700 rounded-lg p-2 hover:bg-gray-600">
+                <p>LAX - Los Angeles</p>
+            </div>
+            <!-- Add more airports as needed -->
+        </div>
+
+        
+        <div class="space-y-1 mb-8">
+            <h3 class="text-lg font-semibold mb-2 pl-2">Featured Flights</h3>
+            <div id="featured-flights" class="flex items-center space-x-2">
+                <div class="w-1/4 opacity-50">Previous Flight</div>
+                <div class="w-1/2 bg-gray-700 rounded-lg p-2">Current Flight</div>
+                <div class="w-1/4 opacity-50">Next Flight</div>
+            </div>
+        </div>
+        
+
+        <div class="space-y-1 mb-8">
+            <h3 class="text-lg font-semibold mb-2 pl-2">Upcoming Events</h3>
+            <div class="bg-gray-700 rounded-lg p-2 hover:bg-gray-600">
+                <p>Event 1 - Date</p>
+            </div>
+            <div class="bg-gray-700 rounded-lg p-2 hover:bg-gray-600">
+                <p>Event 2 - Date</p>
+            </div>
+            <!-- Add more events as needed -->
+        </div>
+        
+
+<!-- User Profile Section, Snapped to the Bottom -->
+<div class="absolute bottom-0 left-0 px-5 py-4 w-full bg-gray-700">
+    <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+            <img src="https://via.placeholder.com/50" alt="User avatar" class="w-12 h-12 rounded-full">
+            <div>
+                <h2 class="text-lg font-semibold text-white">{{request.user.first_name}}</h2>
+                <p class="text-sm text-gray-400">@{{request.user.username}}</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2 mt-3 left-2">
+            <button class="text-white hover:text-gray-200 focus:outline-none">
+                <i class="fas fa-cog fa-sm" style="font-size: 1.5em;"></i>
+            </button>
+            <button class="text-white hover:text-gray-200 ">
+                <i class="fas fa-question-circle fa-sm" style="font-size: 1.5em;"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+
+    </div>
+
+</div>
+
+<script>
+// Simplified example to change flights. You should fetch actual data for implementation.
+const flights = ['Flight 1', 'Flight 2', 'Flight 3']; // Example flight data
+let currentFlightIndex = 0;
+
+function updateFeaturedFlights() {
+    const container = document.getElementById('featured-flights');
+    container.children[0].textContent = flights[(currentFlightIndex - 1 + flights.length) % flights.length];
+    container.children[1].textContent = flights[currentFlightIndex];
+    container.children[2].textContent = flights[(currentFlightIndex + 1) % flights.length];
+}
+
+function changeFlight(direction) {
+    currentFlightIndex += direction;
+    if (currentFlightIndex < 0) currentFlightIndex = flights.length - 1;
+    else if (currentFlightIndex >= flights.length) currentFlightIndex = 0;
+    updateFeaturedFlights();
+}
+
+updateFeaturedFlights(); // Initialize
+
+// Set interval to change flight every 15 seconds
+setInterval(function() {
+    changeFlight(1); // Move to the next flight
+}, 15000); // 15000 milliseconds = 15 seconds
+
+
+</script>
+
+
+        <script>
+            document.getElementById('toggle-btn').addEventListener('click', toggleSidebar);
+
+            function toggleSidebar() {
+                const sidebar = document.getElementById('sidebar');
+                const toggleIcon = document.getElementById('toggle-icon');
+                const menuToggle = document.getElementById('menu-toggle');
+                const isOpen = sidebar.classList.contains('translate-x-0');
+            
+                if (isOpen) {
+                    // Close sidebar
+                    sidebar.classList.replace('translate-x-0', '-translate-x-full');
+                    // Move button back to the edge of the screen and preserve vertical centering
+                    menuToggle.style.transform = 'translateX(0) translateY(-50%)';
+                    // Change icon to menu (bars)
+                    toggleIcon.classList.replace('fa-times', 'fa-bars');
+                } else {
+                    // Open sidebar
+                    sidebar.classList.replace('-translate-x-full', 'translate-x-0');
+                    // Move button with sidebar and preserve vertical centering
+                    menuToggle.style.transform = `translateX(${sidebar.offsetWidth}px) translateY(-50%)`;
+                    // Change icon to close (times)
+                    toggleIcon.classList.replace('fa-bars', 'fa-times');
+                }
+            }
+            
+        </script>
+
+        
+        
+        <div id="plan-flight-card" class="max-w-sm mx-auto bg-gray-800 text-white rounded-lg shadow-md overflow-hidden z-50" style="top:100px; left: 5%; z-index: 1000; position: absolute; display: none;">
+            <div class="draggable-handle flex justify-between items-center p-2 cursor-move">
+                <h1 class="text-xl font-semibold">Plan Flight</h1>
+                <button id="close-flightplan-card-btn" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex justify-center bg-gray-700">
+                <img class="w-full object-cover" style="height: 300px;" src="{% static 'images/plan_flight_placeholder.jpg' %}" alt="Plane">
+            </div>
+            <div class="px-5 py-4">
+                <div class="mb-4 departure-info" onclick="toggleInput('callsign')">
+                    <div class="block text-sm font-medium">Callsign</div>
+                    <div id="callsign" class="mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md w-full">Your Callsign</div>
+                </div>
+                <div class="mb-4 arrival-info" onclick="toggleInput('origin-airport')">
+                    <div class="block text-sm font-medium">Origin Airport</div>
+                    <div id="origin-airport" class="mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md w-full">Origin Airport</div>
+                </div>
+                <div class="mb-4 arrival-info" onclick="toggleInput('destination-airport')">
+                    <div class="block text-sm font-medium">Destination Airport</div>
+                    <div id="destination-airport" class="mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md w-full">Destination Airport</div>
+                </div>
+            </div>
+        </div>
+        
+        <script>
+            function toggleInput(inputId) {
+                var inputElement = document.getElementById(inputId);
+                var textValue = inputElement.textContent;
+                var inputHtml = '<input type="text" class="mt-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-md w-full" value="' + textValue + '">';
+                inputElement.innerHTML = inputHtml;
+                inputElement.getElementsByTagName('input')[0].focus();
+                inputElement.onclick = function(event) {
+                    event.stopPropagation();
+                };
+                inputElement.getElementsByTagName('input')[0].onblur = function() {
+                    inputElement.innerHTML = inputElement.getElementsByTagName('input')[0].value;
+                    inputElement.onclick = function() {
+                        toggleInput(inputId);
+                    };
+                };
+            }
+        </script>
+ 
+        
         <div id="search-bar" style="position: absolute; top: 50px; left: 50%; transform: translateX(-50%); z-index: 1000;">
             <input type="text" placeholder="Search..." id="search-input" style="padding: 10px 10px 10px 40px; width: 400px; border-radius: 20px;">
             <i class="fas fa-search" style="position: absolute; top: 15px; left: 10px; color: #aaa;"></i>
@@ -91,7 +338,7 @@
           <div id="airport-card" style="display: none; position: absolute; top: 40%; left: 10%; transform: translateY(-50%); z-index: 1000;" class="max-w-2xl mx-auto bg-white rounded-lg border border-gray-200 shadow-md dark:bg-gray-800 dark:border-gray-700 z-50">
             <div class="draggable-handle flex justify-between items-center p-2 cursor-move">
                 <h5 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Loading...</h5>
-                <button id="close-card-btn" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><i class="fas fa-times"></i></button>
+                <button id="close-airport-card-btn" class="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"><i class="fas fa-times"></i></button>
             </div>
             <!-- Tabs -->
             <ul id="tabs" class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500 border-b border-gray-200 dark:border-gray-700">
@@ -159,7 +406,7 @@
         </div>
         
             <!-- Wrap toolbar and filters menu in a container -->
-    <div style="position: absolute; bottom: 25px; right: 20px; z-index: 1000; display: flex;">
+    <div style="position: absolute; bottom: 25px; right: 20px; z-index: 35; display: flex;">
         <!-- Map toolbar -->
         <div id="map-toolbar" class="flex m-2">
             <select id="styleSelector" class="toolbar-select">
@@ -212,9 +459,7 @@
         
 
         <div id="map"></div>
-        <div style="position: absolute; top: 10px; left: 10px; z-index: 1000;">
-            <a href="{% url 'dashboard' %}#hero-card" style="margin-left: 5px; color: white; text-shadow: 3px 3px 5px rgba(0,0,0,0.5);">Simtrail</a>
-        </div>
+
 
 
 

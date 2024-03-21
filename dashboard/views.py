@@ -1,6 +1,13 @@
 from django.shortcuts import redirect, render
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from django.contrib.auth import get_user_model
+from django.contrib import messages
+
+from dashboard.models import ContactMessage
 
 def dashboard(request):
     page_title = 'Simtrail - A revolutionary flight tracker for virtual pilots.'
@@ -16,13 +23,19 @@ def roadmap(request):
     }
     return render(request, 'dashboard/roadmap.html', context)
 
+def contact(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        email = request.POST.get('email')
+        message = request.POST.get('message')
 
-from django.http import HttpResponse
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.urls import reverse
-from django.contrib.auth import get_user_model
-from django.contrib import messages
+        ContactMessage.objects.create(name=name, email=email, message=message)
+
+        # Redirect to a new URL or show a success message
+        return redirect('dashboard/dashboard.html')  # Replace 'success_url' with the name of the URL you'd like to redirect to
+    else:
+        # If not POST, render the form again or redirect as needed
+        return render(request, 'dashboard/dashboard.html')
 
 @login_required
 def update_flight_hours_view(request):

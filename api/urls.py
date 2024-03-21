@@ -10,6 +10,5 @@ urlpatterns = [
     path('token/refresh/', RefreshTokenView.as_view(), name='token_refresh'),
     path('flight/activate/', activate_flight, name='activate-flight'),
     path('flight/deactivate/', deactivate_flight, name='deactivate-flight'),
-    
     path('flight/active/update_telemetry/', update_active_flight_telemetry, name='update_active_flight_telemetry'),
 ]
