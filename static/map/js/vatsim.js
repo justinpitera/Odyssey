@@ -63,7 +63,6 @@ function fetchAndUpdatePilotsDirectly() {
 
 // Function to update the map with pilots' data
 function updateMapWithPilots(data) {
-    console.log(data);
 
     // Process VATSIM pilots
     data.vatsimPilots.forEach(pilot => {
@@ -307,14 +306,14 @@ function drawFlightPlan(waypoints) {
     }
 
     // Now, draw the waypoints markers after drawing the flight plan
-    drawWaypointsMarkers(waypoints);
+    drawWaypointsMarkersVATSIM(waypoints);
 }
 
 /**
  * Draws markers for the given waypoints, using Font Awesome triangle icons.
  * @param {Array} waypoints - The waypoints to draw markers for.
  */
-function drawWaypointsMarkers(waypoints) {
+function drawWaypointsMarkersVATSIM(waypoints) {
     // Clear existing waypoint markers before drawing new ones
     vatsimWaypointMarkers.forEach(marker => marker.remove());
     vatsimWaypointMarkers.length = 0; // Reset the array

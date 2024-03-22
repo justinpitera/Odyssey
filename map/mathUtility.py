@@ -17,3 +17,14 @@ def haversine(lon1, lat1, lon2, lat2):
     return c * r
 
 
+def convert_inhg_to_mb(inhg):
+    """
+    Convert pressure from inches of mercury (inHg) to millibars (mb)/hectopascals (hPa).
+
+    Parameters:
+    - inhg: The pressure value in inches of mercury.
+
+    Returns:
+    - The rounded pressure value in millibars/hPa to the nearest whole number.
+    """
+    return round(inhg * 33.8639,0) # 1 inHg = 33.8639 mb/hPa, round to nearest whole number, automatically converts to int

@@ -334,8 +334,8 @@ body, html {
 
 
 #menu-toggle {
-    background-color: #576272; /* bg-gray-700 */
-    opacity: 0.95;
+    background-color: #111827; /* bg-gray-700 */
+
     border-radius: 0 0.5rem 0.5rem 0; /* rounded-r-lg */
     border-top: 2px solid white; /* white outline top */
     border-right: 2px solid white; /* white outline right */
@@ -345,7 +345,7 @@ body, html {
 }
 
 #sidebar {
-    background-color: #576272; /* bg-gray-700 */
+    background-color: #111827; /* bg-gray-700 */
 
 
     border-right: 2px solid white; /* white outline right */

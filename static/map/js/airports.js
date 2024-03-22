@@ -49,9 +49,19 @@ function fetchAirportDetails(airportIdent) {
   document.getElementById("arrivals").innerHTML = '<div class="loading p-4 details-container" style="color: black;"><p>Loading arrivals...</p></div>';
   document.getElementById("departures").innerHTML = '<div class="loading p-4 details-container" style="color: black;"><p>Loading departures...</p></div>';
   document.querySelector(".max-w-2xl .text-2xl").textContent = "Loading..."
-  var url = `api/airport_details/${airportIdent}/`;
 
-  fetch(url)
+
+
+
+
+  var url = `api/airport_details/${airportIdent}/`;
+  var metarUrl = `api/get_metar/${airportIdent}/`; // URL for fetching METAR data
+
+  // Fetch METAR data
+  fetch(metarUrl)
+      .then(response => response.json())
+      .then(metarData => {
+        fetch(url)
     .then((response) => response.json())
     .then((data) => {
       // Set the airport name
@@ -166,23 +176,34 @@ function fetchAirportDetails(airportIdent) {
       }
       departuresContent += "</div>"; // Close the div that sets the fixed height and overflow
 
-      // Initialize airport details content
       var detailsContent = `
-            <div class="p-4 details-container" style="color: black;">
-                <p><strong><i class="fa-solid fa-signature"></i></strong> ${data.airportName}</p>
-                <hr>
-                <p><strong><i class="fa-solid fa-passport"></i></strong> ${data.airportIdent}</p>
-                <hr>
-                <p><strong><i class="fa-solid fa-location-dot"></i></i></strong> ${data.airportRegion}</p>
-                <hr>
-                <p><strong><i class="fa-solid fa-clock"></i></strong> ${data.airportLocalTime}</p>
-                <hr>
-                <p><strong><i class="fa-solid fa-plane-arrival"></i></strong> ${countOfArrivals}</p>
-                <hr>
-                <p><strong><i class="fa-solid fa-plane-departure"></i></strong> ${countOfDepartures}</p>
-            </div>
-        `;
-
+      <div class="p-4 details-container" style="color: black;">
+          <p><strong><i class="fa-solid fa-signature"></i></strong> ${data.airportName || 'N/A'}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-passport"></i></strong> ${data.airportIdent || 'N/A'}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-location-dot"></i></strong> ${data.airportRegion || 'N/A'}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-clock"></i></strong> ${data.airportLocalTime || 'N/A'}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-plane-arrival"></i></strong> ${countOfArrivals}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-plane-departure"></i></strong> ${countOfDepartures}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-list"></i></strong> ${metarData.flight_category || 'N/A'}</p>
+          <hr>
+          <p><strong><i class="fa-regular fa-temperature-quarter"></i></strong> ${metarData.temp_c ? metarData.temp_c + '°C' : 'N/A'}</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-gauge-low"></i></strong> ${metarData.altim_in_hg || 'N/A'} inHg</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-wind"></i></strong> ${metarData.wind_dir_degrees ? (metarData.wind_dir_degrees === 'VRB' ? 'VRB' : metarData.wind_dir_degrees + '°') : 'N/A'} / ${metarData.wind_speed_kt || 'N/A'} knots</p>
+          <hr>
+          <p><strong><i class="fa-solid fa-eye"></i></strong> ${metarData.visibility_statute_mi ? metarData.visibility_statute_mi + ' statute miles' : 'N/A'}</p>
+          <hr>
+          <p><i class="fa-solid fa-line-height"></i></strong> ${metarData.elevation_m ? metarData.elevation_m + ' meters' : 'N/A'}</p>
+      </div>
+  `;
+  
 
 
       // Populate the tabs with the fetched data
@@ -191,6 +212,9 @@ function fetchAirportDetails(airportIdent) {
       document.getElementById("departures").innerHTML = departuresContent;
 
     });
+      })
+      .catch(error => console.error("Error fetching METAR data:", error));
+  
 }
 
 function fetchAirportLocalTime(airportIdent) {

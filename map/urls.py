@@ -21,6 +21,8 @@ from map.vatsimUtility import fetch_vatsim_data
 from map.searchUtility import *
 from map.routeUtility import construct_route
 
+from map.weatherUtility import fetch_metars, get_metar
+
 urlpatterns = [
     path('', aircraft_map, name='map'),
     path('api/aircraft/telemetry', aircraft_data, name='aircraft_telemetry'),
@@ -41,4 +43,6 @@ urlpatterns = [
     path('api/vatsim_network/',fetch_vatsim_data, name='vatsim_network'),
     path('search_airports/', search_airports, name='search_airports'),
     path('api/construct_route/<int:network_id>/', construct_route, name='construct_route'),
+    path('api/fetch_metars/', fetch_metars, name='fetch_metars'),
+    path('api/get_metar/<str:ident>/', get_metar, name='get_metar_info'),
 ]

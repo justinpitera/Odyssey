@@ -75,11 +75,5 @@ document
     document.getElementById("plan-flight-card").style.display = "none";
   });
 
-    // Open flight plan planner when clicking the plan flight button
-document
-.getElementById("flightplan-btn")
-.addEventListener("click", function () {
-  document.getElementById("plan-flight-card").style.display = "block";
-});
 
 
